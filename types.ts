@@ -40,26 +40,19 @@ export type UserRole = 'client' | 'cleaner';
 // New: Specific Admin Roles
 export type AdminRole = 'Super' | 'Support' | 'Verification' | 'Payment';
 
-export interface Receipt {
-  name: string;
-  dataUrl: string;
-}
-
 export interface Booking {
   id: string;
   service: string;
   date: string;
-  amount: number; // This is the cleaner's charge
-  totalAmount?: number; // This is amount + escrow fee
+  amount: number;
   status: 'Upcoming' | 'Completed' | 'Cancelled';
   clientName: string;
   cleanerName: string;
   clientId: string;
-  cleanerId: string; // FIX: Changed from number to string to match UUID
+  cleanerId: string;
   reviewSubmitted?: boolean;
-  paymentMethod: 'Escrow' | 'Direct';
-  paymentStatus: 'Pending Payment' | 'Pending Admin Confirmation' | 'Confirmed' | 'Pending Payout' | 'Paid' | 'Not Applicable';
-  paymentReceipt?: Receipt;
+  paymentMethod: 'Direct';
+  paymentStatus: 'Not Applicable' | 'Paid';
   jobApprovedByClient?: boolean;
 }
 
@@ -195,12 +188,11 @@ export interface User {
   professionalExperience?: string; // Detailed professional experience description
   accountNumber?: string;
   bankName?: string;
-  subscriptionTier?: string; // Changed to support new plan names like Basic, Pro, Elite, Regular, Silver, etc.
+  subscriptionTier?: string;
   pendingSubscription?: string;
-  subscriptionReceipt?: Receipt;
   subscriptionEndDate?: string;
-  subscriptionDate?: string; // Date subscription was activated (ISO string)
-  subscriptionAmount?: number; // Amount paid for the subscription (in NGN)
+  subscriptionDate?: string;
+  subscriptionAmount?: number;
   trialStartDate?: string; // For tracking trial periods
   trialEndDate?: string;
   reviewsData?: Review[];

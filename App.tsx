@@ -4,12 +4,11 @@ import React, { useState, useEffect, Suspense, useRef } from 'react';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { BookingModal } from './components/BookingModal';
-import { EscrowPaymentDetailsModal } from './components/EscrowPaymentDetailsModal';
 import { SubscriptionPaymentDetailsModal } from './components/SubscriptionPaymentDetailsModal';
 import { StarIcon, ChatBubbleLeftRightIcon } from './components/icons';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
-import { User, Cleaner, View, SubscriptionPlan, Review, Receipt, Job } from './types';
+import { User, Cleaner, View, SubscriptionPlan, Review, Job } from './types';
 import { apiService, getStoredToken, storeToken, clearToken } from './services/apiService';
 
 // Lazy Load Pages to optimize initial bundle size
@@ -99,8 +98,6 @@ const App: React.FC = () => {
     // Modal states
     const [cleanerToBook, setCleanerToBook] = useState<Cleaner | null>(null);
     const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
-    const [isEscrowModalOpen, setIsEscrowModalOpen] = useState(false);
-    const [bookingDetailsForEscrow, setBookingDetailsForEscrow] = useState<{ cleaner: Cleaner; totalAmount: number } | null>(null);
     const [isSubPaymentModalOpen, setIsSubPaymentModalOpen] = useState(false);
     const [planToUpgrade, setPlanToUpgrade] = useState<SubscriptionPlan | null>(null);
 
@@ -447,7 +444,7 @@ const App: React.FC = () => {
         }
     };
 
-    const handleConfirmBooking = async (paymentMethod: 'Direct' | 'Escrow', cleaner: Cleaner) => {
+    const handleConfirmBooking = async (cleaner: Cleaner) => {
         if (!user) return;
         try {
             const baseAmount = cleaner.chargeHourly || cleaner.chargeDaily || cleaner.chargePerContract || 5000;
@@ -456,8 +453,7 @@ const App: React.FC = () => {
                 service: cleaner.serviceTypes[0] || 'General Cleaning',
                 date: new Date().toISOString().split('T')[0],
                 amount: baseAmount,
-                totalAmount: paymentMethod === 'Escrow' ? baseAmount * 1.1 : baseAmount,
-                paymentMethod,
+                paymentMethod: 'Direct',
             };
             const newBooking = await apiService.createBooking(bookingData);
 
@@ -471,7 +467,7 @@ const App: React.FC = () => {
             }
 
             handleCloseBookingModals();
-            alert(`Booking created! ${paymentMethod === 'Escrow' ? 'Please upload your payment receipt from your dashboard.' : ''}`);
+            alert('Booking created successfully!');
             handleNavigate('clientDashboard');
         } catch (error: any) {
             alert(`Booking failed: ${error.message}`);
@@ -571,15 +567,7 @@ const App: React.FC = () => {
 
     const handleCloseBookingModals = () => {
         setIsBookingModalOpen(false);
-        setIsEscrowModalOpen(false);
         setCleanerToBook(null);
-        setBookingDetailsForEscrow(null);
-    };
-
-    const handleProceedToEscrow = (bookingData: { cleaner: Cleaner; totalAmount: number; }) => {
-        setBookingDetailsForEscrow(bookingData);
-        setIsBookingModalOpen(false);
-        setIsEscrowModalOpen(true);
     };
 
     const handleUpgradeRequest = (plan: SubscriptionPlan) => { setIsSubPaymentModalOpen(true); setPlanToUpgrade(plan); };
@@ -591,17 +579,6 @@ const App: React.FC = () => {
         setPlanToUpgrade(null);
     };
 
-    const handleUploadBookingReceipt = async (bookingId: string, receipt: Receipt) => {
-        try {
-            const updatedUser = await apiService.uploadReceipt(bookingId, receipt, 'booking');
-            setUser(updatedUser);
-            alert('Receipt uploaded successfully. Admin will confirm your payment shortly.');
-        } catch (error: any) {
-            alert(`Failed to upload receipt: ${error.message}`);
-        }
-    };
-
-
     const handleMarkAsPaid = async (bookingId: string) => {
         if (!user) return;
         try {
@@ -612,18 +589,6 @@ const App: React.FC = () => {
             alert(`Failed to mark as paid: ${e.message}`);
         }
     };
-
-    const handleConfirmEscrowPayment = async (bookingId: string) => {
-        if (!user) return;
-        try {
-            await apiService.adminConfirmPayment(bookingId);
-            await refetchAllData(user);
-            alert("Payment confirmed successfully.");
-        } catch (e: any) {
-            alert(`Failed to confirm payment: ${e.message}`);
-        }
-    };
-
 
     const renderContent = () => {
         if (isLoading) {
@@ -655,7 +620,6 @@ const App: React.FC = () => {
                         onCancelBooking={handleCancelBooking}
                         onReviewSubmit={handleReviewSubmit}
                         onApproveJobCompletion={handleApproveJobCompletion}
-                        onUploadBookingReceipt={handleUploadBookingReceipt}
                         onUpdateUser={handleUpdateUser}
                         onRefreshJobs={refetchJobs}
                         appError={appError}
@@ -686,7 +650,6 @@ const App: React.FC = () => {
                         onUpdateUser={handleUpdateUser}
                         onDeleteUser={handleDeleteUser}
                         onMarkAsPaid={handleMarkAsPaid}
-                        onConfirmPayment={handleConfirmEscrowPayment}
                     />;
                 }
                 handleNavigate('auth');
@@ -754,15 +717,6 @@ const App: React.FC = () => {
                     <BookingModal
                         cleaner={cleanerToBook}
                         user={user}
-                        onClose={handleCloseBookingModals}
-                        onConfirmBooking={handleConfirmBooking}
-                        onProceedToEscrow={handleProceedToEscrow}
-                    />
-                )}
-                {isEscrowModalOpen && bookingDetailsForEscrow && (
-                    <EscrowPaymentDetailsModal
-                        cleaner={bookingDetailsForEscrow.cleaner}
-                        totalAmount={bookingDetailsForEscrow.totalAmount}
                         onClose={handleCloseBookingModals}
                         onConfirmBooking={handleConfirmBooking}
                     />

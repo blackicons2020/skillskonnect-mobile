@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Cleaner, User, View, Booking, Review, Receipt, VerificationDocuments, Job } from '../types';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Cleaner, User, View, Booking, Review, VerificationDocuments, Job } from '../types';
 import { SparklesIcon, MapPinIcon, BriefcaseIcon, ChevronDownIcon, StarIcon, CreditCardIcon, UserGroupIcon, ChatBubbleLeftRightIcon, LifebuoyIcon, PencilIcon, UserIcon } from './icons';
 import { CleanerCard } from './CleanerCard';
 import { getAiRecommendedServices } from '../services/geminiService';
@@ -114,14 +114,13 @@ interface ClientDashboardProps {
     onCancelBooking: (bookingId: string) => void;
     onReviewSubmit: (bookingId: string, cleanerId: string, reviewData: Omit<Review, 'reviewerName'>) => void;
     onApproveJobCompletion: (bookingId: string) => void;
-    onUploadBookingReceipt: (bookingId: string, receipt: Receipt) => void;
     onUpdateUser: (user: User) => void;
     onRefreshJobs?: () => Promise<void>;
     appError: string | null;
     initialTab?: 'find' | 'bookings' | 'messages' | 'support' | 'profile' | 'verification' | 'jobs';
 }
 
-export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user, allCleaners, allUsers = [], allJobs = [], onSelectCleaner, initialFilters, clearInitialFilters, onNavigate, onCancelBooking, onReviewSubmit, onApproveJobCompletion, onUploadBookingReceipt, onUpdateUser, onRefreshJobs, appError, initialTab }) => {
+export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user, allCleaners, allUsers = [], allJobs = [], onSelectCleaner, initialFilters, clearInitialFilters, onNavigate, onCancelBooking, onReviewSubmit, onApproveJobCompletion, onUpdateUser, onRefreshJobs, appError, initialTab }) => {
     const [recommendations, setRecommendations] = useState<string[]>([]);
     const [isRecsLoading, setIsRecsLoading] = useState(true);
     
@@ -231,9 +230,6 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user, allClean
     const [selectedCountry, setSelectedCountry] = useState(
         countries.find(c => c.name === (user.country || 'Nigeria')) || countries[0]
     );
-
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const [bookingIdForUpload, setBookingIdForUpload] = useState<string | null>(null);
     
     useEffect(() => {
         if (initialFilters) {
@@ -357,28 +353,6 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user, allClean
         window.scrollTo(0, 0);
     };
 
-    const handleReceiptUploadClick = (bookingId: string) => {
-        setBookingIdForUpload(bookingId);
-        fileInputRef.current?.click();
-    };
-
-    const handleFileSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
-        if (event.target.files && event.target.files[0] && bookingIdForUpload) {
-            const file = event.target.files[0];
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                if (reader.result) {
-                    onUploadBookingReceipt(bookingIdForUpload, { name: file.name, dataUrl: reader.result as string });
-                }
-            };
-            reader.readAsDataURL(file);
-            setBookingIdForUpload(null);
-        }
-        if(event.target) {
-            event.target.value = '';
-        }
-    };
-
     const handleMessageCleaner = async (cleanerId: string, cleanerName: string) => {
         try {
             const chat = await apiService.createChat(user.id, cleanerId, user.fullName, cleanerName);
@@ -458,7 +432,6 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user, allClean
 
     return (
         <div className="p-4 sm:p-8 container mx-auto">
-             <input type="file" ref={fileInputRef} onChange={handleFileSelected} className="hidden" accept="image/*,.pdf" />
              
              {/* Profile Header with Name and Email */}
              <div className="bg-white rounded-lg shadow-md p-6 mb-6">
@@ -734,10 +707,6 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user, allClean
                                          {item.status === 'Upcoming' && item.paymentMethod === 'Direct' && (
                                             <button onClick={() => onApproveJobCompletion(item.id)} className="w-full sm:w-auto text-center bg-green-600 text-white px-3 py-1.5 rounded-md text-xs font-semibold hover:bg-green-700">Mark as Completed</button>
                                          )}
-
-                                         {item.status === 'Upcoming' && item.paymentMethod === 'Escrow' && item.paymentStatus === 'Confirmed' && !item.jobApprovedByClient && <button onClick={() => onApproveJobCompletion(item.id)} className="w-full sm:w-auto text-center bg-green-600 text-white px-3 py-1.5 rounded-md text-xs font-semibold hover:bg-green-700">Approve Job Completion</button>}
-                                         
-                                         {item.paymentMethod === 'Escrow' && item.paymentStatus === 'Pending Payment' && <button onClick={() => handleReceiptUploadClick(item.id)} className="w-full sm:w-auto text-center bg-blue-600 text-white px-3 py-1.5 rounded-md text-xs font-semibold hover:bg-blue-700">Upload Receipt</button>}
                                     </div>
                                 </li>
                                 )})}

@@ -29,11 +29,11 @@ export const HelpCenterPage: React.FC = () => {
                         <FAQItem question="How do I book a worker?">
                             <p>Simply use the search bar on our homepage to find workers in your area. You can filter by service type and location. Once you find a worker you like, click "Book Now" on their profile to start the process.</p>
                         </FAQItem>
-                        <FAQItem question="What is the Escrow payment system?">
-                            <p>Our Escrow system provides a secure way to pay. You pay Skills Konnect, and we hold the funds until you confirm the job has been completed to your satisfaction. This adds a layer of protection for both you and the service provider. A 10% service fee applies to all Escrow payments.</p>
+                        <FAQItem question="How do payments work on Skills Konnect?">
+                            <p>We use secure payment gateways (Paystack for Nigeria and other supported African countries, and Flutterwave for other regions) to process subscription and booking payments online. Your payment information is handled securely and we never store your card details.</p>
                         </FAQItem>
                         <FAQItem question="How do I confirm a job is completed?">
-                            <p>After a job is done, go to the "My Bookings" tab on your dashboard. You will see a button to "Approve Job Completion" or "Mark as Completed". Clicking this will notify us (for Escrow) or simply update the job status (for direct payments).</p>
+                            <p>After a job is done, go to the "My Bookings" tab on your dashboard. You will see a button to "Mark as Completed". Clicking this will update the job status.</p>
                         </FAQItem>
 
                         <h2 className="text-2xl font-semibold text-primary mt-6">For Workers</h2>
@@ -44,7 +44,7 @@ export const HelpCenterPage: React.FC = () => {
                             <p>Our subscription plans help you grow your business by giving you access to more clients, higher visibility in search results, and a professional badge on your profile. We have plans for every stage, including a free option to get you started.</p>
                         </FAQItem>
                         <FAQItem question="How do I get paid?">
-                            <p>For jobs paid via our Escrow system, the payment will be released to your registered bank account after the client approves the job completion and our admin team processes the payout. For direct payments, you are responsible for arranging payment directly with the client.</p>
+                            <p>For direct payment bookings, you are responsible for arranging payment directly with the client. Subscription payments are processed securely via Paystack or Flutterwave depending on your region.</p>
                         </FAQItem>
                     </div>
                 </div>

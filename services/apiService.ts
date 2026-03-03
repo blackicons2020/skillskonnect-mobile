@@ -322,28 +322,6 @@ export const apiService = {
         return handleResponse(response);
     },
     
-    uploadReceipt: async (entityId: string, receiptData: any, type: 'booking' | 'subscription') => {
-        const endpoint = type === 'booking' 
-            ? `${API_URL}/bookings/${entityId}/receipt`
-            : `${API_URL}/users/subscription/receipt`;
-
-        const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: getHeaders(),
-            body: JSON.stringify(receiptData),
-        });
-        return handleResponse(response);
-    },
-
-    requestSubscriptionUpgrade: async (plan: any) => {
-        const response = await fetch(`${API_URL}/users/subscription/upgrade`, {
-            method: 'POST',
-            headers: getHeaders(),
-            body: JSON.stringify({ plan: plan.name }),
-        });
-        return handleResponse(response);
-    },
-
     adminUpdateUser: async (userId: string, userData: Partial<User>) => {
         const payload = { ...userData };
         // Don't send the File object; it should already be base64 if needed
@@ -375,22 +353,6 @@ export const apiService = {
     adminDeleteUser: async (userId: string) => {
         const response = await fetch(`${API_URL}/admin/users/${userId}`, {
             method: 'DELETE',
-            headers: getHeaders(),
-        });
-        return handleResponse(response);
-    },
-
-    adminConfirmPayment: async (bookingId: string) => {
-        const response = await fetch(`${API_URL}/admin/bookings/${bookingId}/confirm-payment`, {
-            method: 'POST',
-            headers: getHeaders(),
-        });
-        return handleResponse(response);
-    },
-
-    adminApproveSubscription: async (userId: string) => {
-        const response = await fetch(`${API_URL}/admin/users/${userId}/approve-subscription`, {
-            method: 'POST',
             headers: getHeaders(),
         });
         return handleResponse(response);

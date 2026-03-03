@@ -2,11 +2,10 @@
 
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { User, Booking, Receipt, AdminRole, SupportTicket, Job } from '../types';
-import { UserGroupIcon, StarIcon, XCircleIcon, EyeIcon, LifebuoyIcon, CheckBadgeIcon } from './icons';
+import { User, Booking, AdminRole, SupportTicket, Job } from '../types';
+import { UserGroupIcon, StarIcon, XCircleIcon, LifebuoyIcon, CheckBadgeIcon } from './icons';
 import { UserDetailsModal } from './UserDetailsModal';
 import { AdminConfirmationModal } from './AdminConfirmationModal';
-import { ReceiptViewerModal } from './ReceiptViewerModal';
 import { apiService } from '../services/apiService';
 
 
@@ -17,7 +16,6 @@ interface AdminDashboardProps {
     onUpdateUser: (user: User) => void;
     onDeleteUser: (userId: string) => void;
     onMarkAsPaid: (bookingId: string) => void;
-    onConfirmPayment: (bookingId: string) => void;
 }
 
 const CreateAdminModal: React.FC<{ onClose: () => void; onCreate: (data: any) => void }> = ({ onClose, onCreate }) => {
@@ -69,7 +67,7 @@ const CreateAdminModal: React.FC<{ onClose: () => void; onCreate: (data: any) =>
     );
 };
 
-export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: currentUser, allUsers, allJobs = [], onUpdateUser, onDeleteUser, onMarkAsPaid, onConfirmPayment }) => {
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: currentUser, allUsers, allJobs = [], onUpdateUser, onDeleteUser, onMarkAsPaid }) => {
     // Current user context is now passed directly as a prop, avoiding redundant fetches
 
     // Initial state setup to avoid flashing incorrect tabs
@@ -79,7 +77,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: currentUse
     const [userToView, setUserToView] = useState<User | null>(null);
     const [userToSuspend, setUserToSuspend] = useState<User | null>(null);
     const [userToDelete, setUserToDelete] = useState<User | null>(null);
-    const [receiptToView, setReceiptToView] = useState<Receipt | null>(null);
     const [isCreateAdminModalOpen, setIsCreateAdminModalOpen] = useState(false);
 
     // Support Tab State
@@ -174,17 +171,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: currentUse
     const subscriptionPayments = useMemo(() => {
         if (!allUsers) return [];
         const workers = allUsers.filter(u => u.role === 'cleaner' && !u.isAdmin);
-        if (subscriptionFilter === 'pending') {
-            return workers.filter(u => u.pendingSubscription && u.subscriptionReceipt);
-        }
         if (subscriptionFilter === 'active') {
             return workers.filter(u => u.subscriptionTier && u.subscriptionTier !== 'Free');
         }
-        // 'all' — show everyone with a paid subscription OR pending
-        return workers.filter(u => (u.subscriptionTier && u.subscriptionTier !== 'Free') || u.pendingSubscription);
+        // 'all' — show everyone with a paid subscription
+        return workers.filter(u => u.subscriptionTier && u.subscriptionTier !== 'Free');
     }, [allUsers, subscriptionFilter]);
-
-    const pendingSubscriptionApprovals = allUsers ? allUsers.filter(u => u.pendingSubscription && u.subscriptionReceipt) : [];
 
     // Permissions Helper
     const canSeeTab = (tab: typeof activeTab) => {
@@ -330,53 +322,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: currentUse
         </div>
     );
 
-    const ConfirmationPaymentTable: React.FC<{ bookings: Booking[] }> = ({ bookings }) => (
-        <div>
-            <h3 className="text-xl font-semibold p-4">Payment Confirmations (Escrow)</h3>
-            <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                        <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Worker</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Receipt</th>
-                            <th className="relative px-6 py-3"><span className="sr-only">Action</span></th>
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                        {bookings.map((booking) => (
-                            <tr key={booking.id}>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{booking.clientName}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{booking.cleanerName}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">₦{(booking.totalAmount || booking.amount).toLocaleString()}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{booking.date}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    {booking.paymentReceipt ? (
-                                        <button
-                                            onClick={() => setReceiptToView(booking.paymentReceipt!)}
-                                            className="text-primary hover:text-secondary flex items-center gap-1 font-medium"
-                                        >
-                                            <EyeIcon className="w-4 h-4" />
-                                            View Receipt
-                                        </button>
-                                    ) : (
-                                        <span className="text-gray-400 italic">No receipt</span>
-                                    )}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <button onClick={() => onConfirmPayment(booking.id)} className="bg-primary text-white px-3 py-1 rounded-md text-xs font-semibold hover:bg-secondary">Confirm Payment</button>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-                {bookings.length === 0 && <p className="text-center text-gray-500 p-4">No records found.</p>}
-            </div>
-        </div>
-    );
-
     const getJobStatusBadge = (status: Booking['status']) => {
         switch (status) {
             case 'Upcoming': return 'bg-indigo-100 text-indigo-800';
@@ -396,49 +341,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: currentUse
             default: return 'bg-gray-100 text-gray-800';
         }
     }
-
-    const SubscriptionTable: React.FC<{ users: User[], onApprove: (userId: string) => void }> = ({ users, onApprove }) => (
-        <div>
-            <h3 className="text-xl font-semibold p-4">Subscription Approvals</h3>
-            <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                        <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Worker Name</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Requested Plan</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Receipt</th>
-                            <th className="relative px-6 py-3"><span className="sr-only">Action</span></th>
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                        {users.map((user) => (
-                            <tr key={user.id}>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{user.fullName}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.pendingSubscription}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    {user.subscriptionReceipt ? (
-                                        <button
-                                            onClick={() => setReceiptToView(user.subscriptionReceipt!)}
-                                            className="text-primary hover:text-secondary flex items-center gap-1 font-medium"
-                                        >
-                                            <EyeIcon className="w-4 h-4" />
-                                            View Receipt
-                                        </button>
-                                    ) : (
-                                        <span className="text-gray-400 italic">No receipt</span>
-                                    )}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <button onClick={() => onApprove(user.id)} className="bg-primary text-white px-3 py-1 rounded-md text-xs font-semibold hover:bg-secondary">Approve Upgrade</button>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-                {users.length === 0 && <p className="text-center text-gray-500 p-4">No pending approvals.</p>}
-            </div>
-        </div>
-    );
 
     // Only render dashboard if we have current user context (passed via prop now)
     if (!currentUser) return <div className="p-8 text-center">Loading admin dashboard...</div>;
@@ -850,8 +752,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: currentUse
                     confirmButtonClass="bg-red-600 hover:bg-red-500 focus-visible:outline-red-600"
                 />
             )}
-
-            {receiptToView && <ReceiptViewerModal receipt={receiptToView} onClose={() => setReceiptToView(null)} />}
 
             {isCreateAdminModalOpen && (
                 <CreateAdminModal onClose={() => setIsCreateAdminModalOpen(false)} onCreate={handleCreateAdmin} />

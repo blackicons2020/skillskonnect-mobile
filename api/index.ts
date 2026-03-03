@@ -273,7 +273,6 @@ app.post('/api/auth/login', async (req: ExpressRequest, res: ExpressResponse) =>
       bookingHistory: bookings || [],
       reviewsData: reviews || [],
       pendingSubscription: user.pendingSubscription,
-      subscriptionReceipt: user.subscriptionReceipt,
       subscriptionEndDate: user.subscriptionEndDate,
       subscriptionDate: user.subscriptionDate,
       subscriptionAmount: user.subscriptionAmount,
@@ -383,7 +382,6 @@ app.get('/api/users/me', protect, async (req: ExpressRequest, res: ExpressRespon
       bookingHistory: bookings || [],
       reviewsData: reviews || [],
       pendingSubscription: user.pendingSubscription,
-      subscriptionReceipt: user.subscriptionReceipt,
       subscriptionEndDate: user.subscriptionEndDate,
       subscriptionDate: user.subscriptionDate,
       subscriptionAmount: user.subscriptionAmount,
@@ -628,13 +626,8 @@ app.post('/api/bookings/:id/complete', protect, async (req: ExpressRequest, res:
     const booking = await Booking.findById(req.params.id);
     if (!booking) return res.status(404).json({ message: 'Booking not found' });
     
-    let newPaymentStatus = booking.paymentStatus;
-    if (booking.paymentMethod === 'Escrow' && booking.paymentStatus === 'Confirmed') {
-      newPaymentStatus = 'Pending Payout';
-    }
-
     booking.status = 'Completed';
-    booking.paymentStatus = newPaymentStatus;
+    booking.paymentStatus = booking.paymentStatus;
     await booking.save();
 
     res.json({ 
@@ -673,62 +666,9 @@ app.post('/api/bookings/:id/review', protect, async (req: ExpressRequest, res: E
   } catch (error) { handleError(res, error); }
 });
 
-app.post('/api/bookings/:id/receipt', protect, async (req: ExpressRequest, res: ExpressResponse) => {
-  const { name, dataUrl } = req.body;
-  try {
-    const booking = await Booking.findByIdAndUpdate(
-      req.params.id,
-      { 
-        escrowPaymentDetails: { name, dataUrl },
-        paymentStatus: 'Pending Admin Confirmation' 
-      },
-      { new: true }
-    );
-    res.json(booking);
-  } catch (error) { handleError(res, error); }
-});
-
 // ============================================================================
 // ROUTES: SUBSCRIPTION
 // ============================================================================
-app.post('/api/users/subscription/upgrade', protect, async (req: ExpressRequest, res: ExpressResponse) => {
-  const authReq = req as AuthRequest;
-  const { plan } = req.body;
-  try {
-    const user = await User.findByIdAndUpdate(
-      authReq.user!.id,
-      { pendingSubscription: plan },
-      { new: true }
-    );
-    if (!user) return res.status(404).json({ message: 'User not found' });
-    
-    res.json({ 
-      ...user.toObject(), 
-      fullName: user.fullName, 
-      subscriptionTier: user.subscriptionTier, 
-      pendingSubscription: user.pendingSubscription 
-    });
-  } catch (error) { handleError(res, error); }
-});
-
-app.post('/api/users/subscription/receipt', protect, async (req: ExpressRequest, res: ExpressResponse) => {
-  const authReq = req as AuthRequest;
-  const { name, dataUrl } = req.body;
-  try {
-    const user = await User.findByIdAndUpdate(
-      authReq.user!.id,
-      { subscriptionReceipt: { name, dataUrl } },
-      { new: true }
-    );
-    if (!user) return res.status(404).json({ message: 'User not found' });
-    
-    res.json({ 
-      ...user.toObject(), 
-      fullName: user.fullName, 
-      subscriptionReceipt: user.subscriptionReceipt 
-    });
-  } catch (error) { handleError(res, error); }
-});
 
 // ============================================================================
 // ROUTES: ADMIN
@@ -746,7 +686,6 @@ app.get('/api/admin/users', protect, admin, async (req: ExpressRequest, res: Exp
         isSuspended: u.isSuspended,
         subscriptionTier: u.subscriptionTier,
         pendingSubscription: u.pendingSubscription,
-        subscriptionReceipt: u.subscriptionReceipt,
         clientType: u.clientType,
         cleanerType: u.cleanerType,
         companyName: u.companyName,
@@ -767,13 +706,6 @@ app.delete('/api/admin/users/:id', protect, admin, async (req: ExpressRequest, r
   try {
     await User.findByIdAndDelete(req.params.id);
     res.json({ message: 'User deleted' });
-  } catch (error) { handleError(res, error); }
-});
-
-app.post('/api/admin/bookings/:id/confirm-payment', protect, admin, async (req: ExpressRequest, res: ExpressResponse) => {
-  try {
-    await Booking.findByIdAndUpdate(req.params.id, { paymentStatus: 'Confirmed' });
-    res.json({ message: 'Payment confirmed' });
   } catch (error) { handleError(res, error); }
 });
 
@@ -870,8 +802,7 @@ app.get('/api/payment/verify/:reference', protect, async (req: ExpressRequest, r
           subscriptionDate,
           subscriptionEndDate,
           subscriptionAmount: amount,
-          pendingSubscription: undefined,
-          subscriptionReceipt: undefined
+          pendingSubscription: undefined
         });
       }
 
@@ -879,45 +810,6 @@ app.get('/api/payment/verify/:reference', protect, async (req: ExpressRequest, r
     } else {
       res.json({ success: false, message: 'Payment not successful' });
     }
-  } catch (error) { handleError(res, error); }
-});
-
-app.post('/api/admin/users/:id/approve-subscription', protect, admin, async (req: ExpressRequest, res: ExpressResponse) => {
-  try {
-    const user = await User.findById(req.params.id);
-    if (!user) return res.status(404).json({ message: 'User not found' });
-    
-    const plan = user.pendingSubscription;
-    if (!plan) return res.status(400).json({ message: 'No pending subscription' });
-
-    // Calculate subscription details
-    const subscriptionDate = new Date();
-    const subscriptionEndDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days from now
-    
-    // Map plan to monthly price (in NGN)
-    const planPrices: Record<string, number> = {
-      'Free': 0,
-      'Standard': 5000,
-      'Pro': 10000,
-      'Premium': 30000,
-      'Basic': 5000,
-      'Elite': 30000,
-      'Regular': 20000,
-      'Silver': 30000,
-      'Gold': 50000,
-      'Diamond': 80000
-    };
-    const subscriptionAmount = planPrices[plan] || 0;
-
-    user.subscriptionTier = plan;
-    user.pendingSubscription = undefined;
-    user.subscriptionReceipt = undefined;
-    user.subscriptionDate = subscriptionDate;
-    user.subscriptionEndDate = subscriptionEndDate;
-    user.subscriptionAmount = subscriptionAmount;
-    await user.save();
-
-    res.json({ message: 'Subscription approved' });
   } catch (error) { handleError(res, error); }
 });
 

@@ -18,7 +18,7 @@ export const TermsPage: React.FC = () => {
                     <p>You agree to provide accurate and complete information during registration and to keep this information up to date. You are responsible for maintaining the confidentiality of your account password.</p>
 
                     <h2>4. Payments</h2>
-                    <p>For Escrow payments, Clients agree to pay the total amount, including service fees, to Skills Konnect. Funds will be released to the Service Provider upon satisfactory completion of the job, as confirmed by the Client. For Direct payments, Skills Konnect is not responsible for any disputes, and payment terms are to be agreed upon solely between the Client and the Service Provider.</p>
+                    <p>Subscription payments are processed securely via our payment gateways (Paystack or Flutterwave). For direct service payments, Skills Konnect is not responsible for any disputes between Clients and Service Providers. Payment terms for direct bookings are to be agreed upon solely between the Client and the Service Provider.</p>
 
                     <h2>5. Limitation of Liability</h2>
                     <p>Skills Konnect is not liable for any damages arising from the conduct of users on the platform. We are not responsible for the performance or quality of services provided by Service Providers.</p>

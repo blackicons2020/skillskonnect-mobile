@@ -31,7 +31,6 @@ const UserSchema = new mongoose.Schema({
   bookingHistory: { type: [String], default: [] },
   reviewsData: { type: mongoose.Schema.Types.Mixed, default: [] },
   pendingSubscription: String,
-  subscriptionReceipt: mongoose.Schema.Types.Mixed,
   subscriptionEndDate: Date,
   subscriptionDate: Date,
   subscriptionAmount: Number,

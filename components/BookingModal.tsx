@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Cleaner, User } from '../types';
 import { XCircleIcon } from './icons';
 
@@ -6,16 +6,14 @@ interface BookingModalProps {
     cleaner: Cleaner;
     user: User;
     onClose: () => void;
-    onConfirmBooking: (paymentMethod: 'Direct' | 'Escrow', cleaner: Cleaner) => void;
-    onProceedToEscrow: (bookingData: { cleaner: Cleaner, totalAmount: number }) => void;
+    onConfirmBooking: (cleaner: Cleaner) => void;
 }
 
-export const BookingModal: React.FC<BookingModalProps> = ({ cleaner, user, onClose, onConfirmBooking, onProceedToEscrow }) => {
-    const [paymentMethod] = useState<'Escrow' | 'Direct'>('Direct');
+export const BookingModal: React.FC<BookingModalProps> = ({ cleaner, user, onClose, onConfirmBooking }) => {
     const baseAmount = cleaner.chargeHourly || cleaner.chargeDaily || cleaner.chargePerContract || 5000;
 
     const handleConfirm = () => {
-        onConfirmBooking('Direct', cleaner);
+        onConfirmBooking(cleaner);
     };
 
     return (

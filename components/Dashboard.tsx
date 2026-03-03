@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { User, View, Receipt, VerificationDocuments, Job } from 'types';
+import { User, View, VerificationDocuments, Job } from 'types';
 import { PencilIcon, StarIcon, BriefcaseIcon, ChatBubbleLeftRightIcon, LifebuoyIcon } from './icons';
 import { CLEANING_SERVICES } from '../constants/services';
 import { CLIENT_LIMITS } from '../constants/subscriptions';
