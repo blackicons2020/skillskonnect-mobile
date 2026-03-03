@@ -2076,6 +2076,111 @@ app.get('/api/admin/users', authenticateToken, async (req, res) => {
   }
 });
 
+// ==================== PAYMENT GATEWAY ENDPOINTS (Paystack & Flutterwave) ====================
+
+app.post('/api/payment/initialize', authenticateToken, async (req, res) => {
+  try {
+    const { email, amount, plan, billingCycle } = req.body;
+    const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
+
+    if (!PAYSTACK_SECRET_KEY) {
+      return res.status(500).json({ message: 'Payment gateway not configured. Please add PAYSTACK_SECRET_KEY to environment variables.' });
+    }
+
+    const reference = `SUB_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+    // Look up the user by email to get their ID
+    const user = await User.findOne({ email: req.user.email });
+    const userId = user ? user._id.toString() : null;
+
+    // Initialize Paystack transaction
+    const paystackResponse = await fetch('https://api.paystack.co/transaction/initialize', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${PAYSTACK_SECRET_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        email,
+        amount: amount * 100, // Paystack expects amount in kobo (NGN cents)
+        reference,
+        callback_url: req.body.callback_url || `${req.headers.origin || 'https://skillskonnect.online'}/payment/callback`,
+        metadata: {
+          plan,
+          billingCycle,
+          userId
+        }
+      })
+    });
+
+    const paystackData = await paystackResponse.json();
+
+    if (!paystackData.status) {
+      return res.status(400).json({ message: paystackData.message || 'Payment initialization failed' });
+    }
+
+    // Store pending subscription
+    if (userId) {
+      await User.findByIdAndUpdate(userId, { pendingSubscription: plan });
+    }
+
+    res.json({
+      authorization_url: paystackData.data.authorization_url,
+      access_code: paystackData.data.access_code,
+      reference: paystackData.data.reference
+    });
+  } catch (error) {
+    console.error('Payment initialization error:', error);
+    res.status(500).json({ message: error.message || 'Payment initialization failed' });
+  }
+});
+
+app.get('/api/payment/verify/:reference', authenticateToken, async (req, res) => {
+  try {
+    const { reference } = req.params;
+    const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
+
+    if (!PAYSTACK_SECRET_KEY) {
+      return res.status(500).json({ message: 'Payment gateway not configured' });
+    }
+
+    const paystackResponse = await fetch(`https://api.paystack.co/transaction/verify/${reference}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${PAYSTACK_SECRET_KEY}`
+      }
+    });
+
+    const paystackData = await paystackResponse.json();
+
+    if (paystackData.status && paystackData.data.status === 'success') {
+      const plan = paystackData.data.metadata?.plan;
+      const amount = paystackData.data.amount / 100; // Convert from kobo back to NGN
+      const userId = paystackData.data.metadata?.userId;
+
+      if (plan && userId) {
+        const subscriptionDate = new Date();
+        const subscriptionEndDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+        await User.findByIdAndUpdate(userId, {
+          subscriptionTier: plan,
+          subscriptionDate,
+          subscriptionEndDate,
+          subscriptionAmount: amount,
+          pendingSubscription: null
+        });
+      }
+
+      res.json({ success: true, message: 'Payment verified and subscription activated' });
+    } else {
+      res.json({ success: false, message: 'Payment not successful' });
+    }
+  } catch (error) {
+    console.error('Payment verification error:', error);
+    res.status(500).json({ message: error.message || 'Payment verification failed' });
+  }
+});
+
 // ==================== HEALTH CHECK ====================
 
 app.get('/api/health', (req, res) => {
