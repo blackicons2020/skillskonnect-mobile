@@ -2,12 +2,16 @@
 import express, { Request as ExpressRequest, Response as ExpressResponse, NextFunction, RequestHandler } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { Pool } from 'pg';
+import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import path from 'path';
 import { GoogleGenAI } from '@google/genai';
 import { fileURLToPath } from 'url';
+import { User } from './models/User.js';
+import { Booking } from './models/Booking.js';
+import { SupportTicket } from './models/SupportTicket.js';
+import { Chat, Message } from './models/Chat.js';
 
 // Determine if we are in an ESM environment
 const isESM = typeof import.meta !== 'undefined' && import.meta.url;
@@ -35,11 +39,25 @@ const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_key_123';
 app.use(express.json({ limit: '50mb' }));
 app.use(cors());
 
-// Database Connection
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL, // e.g., postgres://user:pass@localhost:5432/cleanconnect
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+// MongoDB Connection
+const MONGO_URL = process.env.MONGO_URL || 'mongodb+srv://johnmeke2017_db_user:T6b1bVhjnkZOfD5S@craftconnect-cluster.96c4f5o.mongodb.net/craftconnect?retryWrites=true&w=majority&appName=CraftConnect-Cluster&tlsAllowInvalidCertificates=true';
+mongoose.connect(MONGO_URL)
+  .then(() => console.log('MongoDB connected successfully'))
+  .catch((err) => console.error('MongoDB connection error:', err));
+
+// Review Schema (inline since not in models folder)
+const ReviewSchema = new mongoose.Schema({
+  bookingId: String,
+  cleanerId: { type: String, required: true },
+  reviewerName: String,
+  rating: Number,
+  timeliness: Number,
+  thoroughness: Number,
+  conduct: Number,
+  comment: String,
+  createdAt: { type: Date, default: Date.now }
 });
+const Review = mongoose.model('Review', ReviewSchema);
 
 // Gemini AI Client
 // The API key MUST be obtained from process.env.API_KEY
@@ -111,12 +129,11 @@ app.post('/api/auth/register', async (req: ExpressRequest, res: ExpressResponse)
   const { email, password, role, fullName, phoneNumber, state, city, otherCity, address, clientType, cleanerType, companyName, companyAddress, experience, services, bio, chargeHourly, chargeDaily, chargePerContract, chargePerContractNegotiable, bankName, accountNumber, profilePhoto, governmentId, businessRegDoc, gender } = req.body;
 
   try {
-    const userExists = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
-    if (userExists.rows.length > 0) return res.status(400).json({ message: 'User already exists' });
+    const userExists = await User.findOne({ email });
+    if (userExists) return res.status(400).json({ message: 'User already exists' });
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
-    const servicesJson = services ? JSON.stringify(services) : null; 
 
     // Use provided values or defaults for minimal signup
     const userRole = role || 'client';
@@ -127,55 +144,73 @@ app.post('/api/auth/register', async (req: ExpressRequest, res: ExpressResponse)
     const userAddress = address || '';
     const userGender = gender || 'Male';
 
-    const result = await pool.query(
-      `INSERT INTO users (
-        email, password_hash, role, full_name, phone_number, gender, state, city, other_city, address, 
-        client_type, cleaner_type, company_name, company_address, experience, services, bio, 
-        charge_hourly, charge_daily, charge_per_contract, charge_per_contract_negotiable,
-        bank_name, account_number, profile_photo, government_id, business_reg_doc, subscription_tier, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, 'Free', NOW()) RETURNING *`,
-      [email, hashedPassword, userRole, userName, userPhone, userGender, userState, userCity, otherCity, userAddress, clientType, cleanerType, companyName, companyAddress, experience, servicesJson, bio, chargeHourly, chargeDaily, chargePerContract, chargePerContractNegotiable, bankName, accountNumber, profilePhoto, governmentId, businessRegDoc]
-    );
-
-    const user = result.rows[0];
+    const user = await User.create({
+      email,
+      password: hashedPassword,
+      role: userRole,
+      fullName: userName,
+      phoneNumber: userPhone,
+      gender: userGender,
+      state: userState,
+      city: userCity,
+      otherCity,
+      address: userAddress,
+      clientType,
+      cleanerType,
+      companyName,
+      companyAddress,
+      experience,
+      services: services || [],
+      bio,
+      chargeHourly,
+      chargeDaily,
+      chargePerContract,
+      chargePerContractNegotiable,
+      bankName,
+      accountNumber,
+      profilePhoto,
+      governmentId,
+      businessRegDoc,
+      subscriptionTier: 'Free'
+    });
 
     // Return formatted user data
     const userData = {
-      id: user.id,
-      fullName: user.full_name,
+      id: user._id.toString(),
+      fullName: user.fullName,
       email: user.email,
       role: user.role,
-      phoneNumber: user.phone_number,
+      phoneNumber: user.phoneNumber,
       gender: user.gender,
       address: user.address,
       state: user.state,
       city: user.city,
-      otherCity: user.other_city,
-      profilePhoto: user.profile_photo,
-      isAdmin: user.is_admin,
-      adminRole: user.admin_role,
-      subscriptionTier: user.subscription_tier,
-      cleanerType: user.cleaner_type,
-      clientType: user.client_type,
-      companyName: user.company_name,
-      companyAddress: user.company_address,
+      otherCity: user.otherCity,
+      profilePhoto: user.profilePhoto,
+      isAdmin: user.isAdmin,
+      adminRole: user.adminRole,
+      subscriptionTier: user.subscriptionTier,
+      cleanerType: user.cleanerType,
+      clientType: user.clientType,
+      companyName: user.companyName,
+      companyAddress: user.companyAddress,
       experience: user.experience,
       bio: user.bio,
-      services: user.services ? (typeof user.services === 'string' ? JSON.parse(user.services) : user.services) : [],
-      chargeHourly: user.charge_hourly,
-      chargeDaily: user.charge_daily,
-      chargePerContract: user.charge_per_contract,
-      chargePerContractNegotiable: user.charge_per_contract_negotiable,
-      bankName: user.bank_name,
-      accountNumber: user.account_number,
+      services: user.services || [],
+      chargeHourly: user.chargeHourly,
+      chargeDaily: user.chargeDaily,
+      chargePerContract: user.chargePerContract,
+      chargePerContractNegotiable: user.chargePerContractNegotiable,
+      bankName: user.bankName,
+      accountNumber: user.accountNumber,
       bookingHistory: [],
       reviewsData: [],
-      isSuspended: user.is_suspended
+      isSuspended: user.isSuspended
     };
 
     res.status(201).json({
       ...userData,
-      token: generateToken(user.id, user.role, user.is_admin, user.admin_role)
+      token: generateToken(user._id.toString(), user.role, user.isAdmin, user.adminRole)
     });
   } catch (error) { handleError(res, error, 'Registration failed'); }
 });
@@ -183,66 +218,73 @@ app.post('/api/auth/register', async (req: ExpressRequest, res: ExpressResponse)
 app.post('/api/auth/login', async (req: ExpressRequest, res: ExpressResponse) => {
   const { email, password } = req.body;
   try {
-    const result = await pool.query(`
-      SELECT 
-        u.*, 
-        (SELECT json_agg(b.*) FROM bookings b WHERE b.client_id = u.id OR b.cleaner_id = u.id) as booking_history,
-        (SELECT json_agg(r.*) FROM reviews r WHERE r.cleaner_id = u.id) as reviews_data
-      FROM users u WHERE u.email = $1
-    `, [email]);
+    const user = await User.findOne({ email });
     
-    const user = result.rows[0];
-
-    if (user && (await bcrypt.compare(password, user.password_hash))) {
-      if (user.is_suspended) return res.status(403).json({ message: 'Account is suspended.' });
-      
-      // Normalize DB keys to frontend expectations (camelCase) - return complete user data
-      const userData = {
-        id: user.id,
-        fullName: user.full_name,
-        email: user.email,
-        role: user.role,
-        phoneNumber: user.phone_number,
-        gender: user.gender,
-        address: user.address,
-        state: user.state,
-        city: user.city,
-        otherCity: user.other_city,
-        profilePhoto: user.profile_photo,
-        isAdmin: user.is_admin,
-        adminRole: user.admin_role,
-        subscriptionTier: user.subscription_tier,
-        cleanerType: user.cleaner_type,
-        clientType: user.client_type,
-        companyName: user.company_name,
-        companyAddress: user.company_address,
-        experience: user.experience,
-        bio: user.bio,
-        services: user.services ? (typeof user.services === 'string' ? JSON.parse(user.services) : user.services) : [],
-        chargeHourly: user.charge_hourly,
-        chargeDaily: user.charge_daily,
-        chargePerContract: user.charge_per_contract,
-        chargePerContractNegotiable: user.charge_per_contract_negotiable,
-        bankName: user.bank_name,
-        accountNumber: user.account_number,
-        bookingHistory: user.booking_history || [],
-        reviewsData: user.reviews_data || [],
-        pendingSubscription: user.pending_subscription,
-        subscriptionReceipt: user.subscription_receipt ? JSON.parse(user.subscription_receipt) : null,
-        subscriptionEndDate: user.subscription_end_date,
-        subscriptionDate: user.subscription_date,
-        subscriptionAmount: user.subscription_amount,
-        isSuspended: user.is_suspended,
-        governmentId: user.government_id,
-        businessRegDoc: user.business_reg_doc,
-        monthlyNewClientsIds: user.monthly_new_clients_ids ? (typeof user.monthly_new_clients_ids === 'string' ? JSON.parse(user.monthly_new_clients_ids) : user.monthly_new_clients_ids) : [],
-        monthlyUsageResetDate: user.monthly_usage_reset_date
-      };
-      
-      res.json({ token: generateToken(user.id, user.role, user.is_admin, user.admin_role), user: userData });
-    } else {
-      res.status(401).json({ message: 'Invalid email or password' });
+    if (!user) {
+      return res.status(401).json({ message: 'Invalid email or password' });
     }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Invalid email or password' });
+    }
+
+    if (user.isSuspended) {
+      return res.status(403).json({ message: 'Account is suspended.' });
+    }
+
+    // Get booking history
+    const bookings = await Booking.find({
+      $or: [{ clientId: user._id.toString() }, { cleanerId: user._id.toString() }]
+    }).lean();
+
+    // Get reviews
+    const reviews = await Review.find({ cleanerId: user._id.toString() }).lean();
+    
+    // Normalize DB keys to frontend expectations (camelCase) - return complete user data
+    const userData = {
+      id: user._id.toString(),
+      fullName: user.fullName,
+      email: user.email,
+      role: user.role,
+      phoneNumber: user.phoneNumber,
+      gender: user.gender,
+      address: user.address,
+      state: user.state,
+      city: user.city,
+      otherCity: user.otherCity,
+      profilePhoto: user.profilePhoto,
+      isAdmin: user.isAdmin,
+      adminRole: user.adminRole,
+      subscriptionTier: user.subscriptionTier,
+      cleanerType: user.cleanerType,
+      clientType: user.clientType,
+      companyName: user.companyName,
+      companyAddress: user.companyAddress,
+      experience: user.experience,
+      bio: user.bio,
+      services: user.services || [],
+      chargeHourly: user.chargeHourly,
+      chargeDaily: user.chargeDaily,
+      chargePerContract: user.chargePerContract,
+      chargePerContractNegotiable: user.chargePerContractNegotiable,
+      bankName: user.bankName,
+      accountNumber: user.accountNumber,
+      bookingHistory: bookings || [],
+      reviewsData: reviews || [],
+      pendingSubscription: user.pendingSubscription,
+      subscriptionReceipt: user.subscriptionReceipt,
+      subscriptionEndDate: user.subscriptionEndDate,
+      subscriptionDate: user.subscriptionDate,
+      subscriptionAmount: user.subscriptionAmount,
+      isSuspended: user.isSuspended,
+      governmentId: user.governmentId,
+      businessRegDoc: user.businessRegDoc,
+      monthlyNewClientsIds: user.monthlyNewClientsIds || [],
+      monthlyUsageResetDate: user.monthlyUsageResetDate
+    };
+    
+    res.json({ token: generateToken(user._id.toString(), user.role, user.isAdmin, user.adminRole), user: userData });
   } catch (error) { handleError(res, error, 'Login failed'); }
 });
 
@@ -263,14 +305,22 @@ app.get('/api/seed-admins', async (req: ExpressRequest, res: ExpressResponse) =>
 
     const results = [];
     for (const admin of admins) {
-       const exists = await pool.query('SELECT id FROM users WHERE email = $1', [admin.email]);
-       if (exists.rows.length === 0) {
-         const result = await pool.query(
-           `INSERT INTO users (full_name, email, password_hash, role, is_admin, admin_role, phone_number, created_at)
-            VALUES ($1, $2, $3, 'admin', true, $4, '0000000000', NOW()) RETURNING id, email, admin_role`,
-           [admin.name, admin.email, hashedPassword, admin.role]
-         );
-         results.push(result.rows[0]);
+       const exists = await User.findOne({ email: admin.email });
+       if (!exists) {
+         const newAdmin = await User.create({
+           fullName: admin.name,
+           email: admin.email,
+           password: hashedPassword,
+           role: 'client',
+           isAdmin: true,
+           adminRole: admin.role,
+           phoneNumber: '0000000000'
+         });
+         results.push({
+           id: newAdmin._id.toString(),
+           email: newAdmin.email,
+           adminRole: newAdmin.adminRole
+         });
        }
     }
     
@@ -290,56 +340,58 @@ app.get('/api/seed-admins', async (req: ExpressRequest, res: ExpressResponse) =>
 app.get('/api/users/me', protect, async (req: ExpressRequest, res: ExpressResponse) => {
   const authReq = req as AuthRequest;
   try {
-    const result = await pool.query(`
-      SELECT 
-        u.*, 
-        (SELECT json_agg(b.*) FROM bookings b WHERE b.client_id = u.id OR b.cleaner_id = u.id) as booking_history,
-        (SELECT json_agg(r.*) FROM reviews r WHERE r.cleaner_id = u.id) as reviews_data
-      FROM users u WHERE u.id = $1
-    `, [authReq.user!.id]);
-    
-    const user = result.rows[0];
+    const user = await User.findById(authReq.user!.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    // Transform DB snake_case to camelCase for frontend
+    // Get booking history
+    const bookings = await Booking.find({
+      $or: [{ clientId: user._id.toString() }, { cleanerId: user._id.toString() }]
+    }).lean();
+
+    // Get reviews
+    const reviews = await Review.find({ cleanerId: user._id.toString() }).lean();
+
+    // Transform DB to frontend format
     const formattedUser = {
-      id: user.id,
-      fullName: user.full_name,
+      id: user._id.toString(),
+      fullName: user.fullName,
       email: user.email,
       role: user.role,
-      phoneNumber: user.phone_number,
+      phoneNumber: user.phoneNumber,
       gender: user.gender,
       address: user.address,
       state: user.state,
       city: user.city,
-      otherCity: user.other_city,
-      profilePhoto: user.profile_photo,
-      isAdmin: user.is_admin,
-      adminRole: user.admin_role,
-      subscriptionTier: user.subscription_tier,
-      cleanerType: user.cleaner_type,
-      clientType: user.client_type,
-      companyName: user.company_name,
-      companyAddress: user.company_address,
+      otherCity: user.otherCity,
+      profilePhoto: user.profilePhoto,
+      isAdmin: user.isAdmin,
+      adminRole: user.adminRole,
+      subscriptionTier: user.subscriptionTier,
+      cleanerType: user.cleanerType,
+      clientType: user.clientType,
+      companyName: user.companyName,
+      companyAddress: user.companyAddress,
       experience: user.experience,
       bio: user.bio,
-      services: user.services ? (typeof user.services === 'string' ? JSON.parse(user.services) : user.services) : [],
-      chargeHourly: user.charge_hourly,
-      chargeDaily: user.charge_daily,
-      chargePerContract: user.charge_per_contract,
-      chargePerContractNegotiable: user.charge_per_contract_negotiable,
-      bankName: user.bank_name,
-      accountNumber: user.account_number,
-      bookingHistory: user.booking_history || [],
-      reviewsData: user.reviews_data || [],
-      pendingSubscription: user.pending_subscription,
-      subscriptionReceipt: user.subscription_receipt ? JSON.parse(user.subscription_receipt) : null,
-      subscriptionEndDate: user.subscription_end_date,
-      isSuspended: user.is_suspended,
-      governmentId: user.government_id,
-      businessRegDoc: user.business_reg_doc,
-      monthlyNewClientsIds: user.monthly_new_clients_ids ? (typeof user.monthly_new_clients_ids === 'string' ? JSON.parse(user.monthly_new_clients_ids) : user.monthly_new_clients_ids) : [],
-      monthlyUsageResetDate: user.monthly_usage_reset_date
+      services: user.services || [],
+      chargeHourly: user.chargeHourly,
+      chargeDaily: user.chargeDaily,
+      chargePerContract: user.chargePerContract,
+      chargePerContractNegotiable: user.chargePerContractNegotiable,
+      bankName: user.bankName,
+      accountNumber: user.accountNumber,
+      bookingHistory: bookings || [],
+      reviewsData: reviews || [],
+      pendingSubscription: user.pendingSubscription,
+      subscriptionReceipt: user.subscriptionReceipt,
+      subscriptionEndDate: user.subscriptionEndDate,
+      subscriptionDate: user.subscriptionDate,
+      subscriptionAmount: user.subscriptionAmount,
+      isSuspended: user.isSuspended,
+      governmentId: user.governmentId,
+      businessRegDoc: user.businessRegDoc,
+      monthlyNewClientsIds: user.monthlyNewClientsIds || [],
+      monthlyUsageResetDate: user.monthlyUsageResetDate
     };
 
     res.json(formattedUser);
@@ -350,74 +402,69 @@ app.put('/api/users/me', protect, async (req: ExpressRequest, res: ExpressRespon
   const authReq = req as AuthRequest;
   const { role, fullName, phoneNumber, gender, address, bio, services, experience, chargeHourly, chargeDaily, chargePerContract, chargePerContractNegotiable, profilePhoto, state, city, otherCity, companyName, companyAddress, bankName, accountNumber, clientType, cleanerType, governmentId, businessRegDoc } = req.body;
   try {
-    // Get current user data to preserve what's not being updated
-    const currentUser = await pool.query('SELECT * FROM users WHERE id = $1', [authReq.user!.id]);
-    if (currentUser.rows.length === 0) return res.status(404).json({ message: 'User not found' });
+    const user = await User.findById(authReq.user!.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
 
-    const result = await pool.query(
-      `UPDATE users SET 
-        role = COALESCE($1, role),
-        full_name = COALESCE($2, full_name),
-        phone_number = COALESCE($3, phone_number),
-        gender = COALESCE($4, gender),
-        address = COALESCE($5, address),
-        bio = COALESCE($6, bio),
-        services = COALESCE($7, services),
-        experience = COALESCE($8, experience),
-        charge_hourly = COALESCE($9, charge_hourly),
-        charge_daily = COALESCE($10, charge_daily),
-        charge_per_contract = COALESCE($11, charge_per_contract),
-        profile_photo = COALESCE($12, profile_photo),
-        state = COALESCE($13, state),
-        city = COALESCE($14, city),
-        other_city = COALESCE($15, other_city),
-        company_name = COALESCE($16, company_name),
-        company_address = COALESCE($17, company_address),
-        bank_name = COALESCE($18, bank_name),
-        account_number = COALESCE($19, account_number),
-        charge_per_contract_negotiable = COALESCE($20, charge_per_contract_negotiable),
-        client_type = COALESCE($21, client_type),
-        cleaner_type = COALESCE($22, cleaner_type),
-        government_id = COALESCE($23, government_id),
-        business_reg_doc = COALESCE($24, business_reg_doc)
-       WHERE id = $25 RETURNING *`,
-      [role, fullName, phoneNumber, gender, address, bio, services ? JSON.stringify(services) : null, experience, chargeHourly, chargeDaily, chargePerContract, profilePhoto, state, city, otherCity, companyName, companyAddress, bankName, accountNumber, chargePerContractNegotiable, clientType, cleanerType, governmentId, businessRegDoc, authReq.user!.id]
-    );
-    
-    const updatedUser = result.rows[0];
+    // Update only provided fields
+    if (role !== undefined) user.role = role;
+    if (fullName !== undefined) user.fullName = fullName;
+    if (phoneNumber !== undefined) user.phoneNumber = phoneNumber;
+    if (gender !== undefined) user.gender = gender;
+    if (address !== undefined) user.address = address;
+    if (bio !== undefined) user.bio = bio;
+    if (services !== undefined) user.services = services;
+    if (experience !== undefined) user.experience = experience;
+    if (chargeHourly !== undefined) user.chargeHourly = chargeHourly;
+    if (chargeDaily !== undefined) user.chargeDaily = chargeDaily;
+    if (chargePerContract !== undefined) user.chargePerContract = chargePerContract;
+    if (profilePhoto !== undefined) user.profilePhoto = profilePhoto;
+    if (state !== undefined) user.state = state;
+    if (city !== undefined) user.city = city;
+    if (otherCity !== undefined) user.otherCity = otherCity;
+    if (companyName !== undefined) user.companyName = companyName;
+    if (companyAddress !== undefined) user.companyAddress = companyAddress;
+    if (bankName !== undefined) user.bankName = bankName;
+    if (accountNumber !== undefined) user.accountNumber = accountNumber;
+    if (chargePerContractNegotiable !== undefined) user.chargePerContractNegotiable = chargePerContractNegotiable;
+    if (clientType !== undefined) user.clientType = clientType;
+    if (cleanerType !== undefined) user.cleanerType = cleanerType;
+    if (governmentId !== undefined) user.governmentId = governmentId;
+    if (businessRegDoc !== undefined) user.businessRegDoc = businessRegDoc;
+
+    await user.save();
     
     // Return formatted user data
     const userData = {
-      id: updatedUser.id,
-      fullName: updatedUser.full_name,
-      email: updatedUser.email,
-      role: updatedUser.role,
-      phoneNumber: updatedUser.phone_number,
-      gender: updatedUser.gender,
-      address: updatedUser.address,
-      state: updatedUser.state,
-      city: updatedUser.city,
-      otherCity: updatedUser.other_city,
-      profilePhoto: updatedUser.profile_photo,
-      isAdmin: updatedUser.is_admin,
-      adminRole: updatedUser.admin_role,
-      subscriptionTier: updatedUser.subscription_tier,
-      cleanerType: updatedUser.cleaner_type,
-      clientType: updatedUser.client_type,
-      companyName: updatedUser.company_name,
-      companyAddress: updatedUser.company_address,
-      experience: updatedUser.experience,
-      bio: updatedUser.bio,
-      services: updatedUser.services ? (typeof updatedUser.services === 'string' ? JSON.parse(updatedUser.services) : updatedUser.services) : [],
-      chargeHourly: updatedUser.charge_hourly,
-      chargeDaily: updatedUser.charge_daily,
-      chargePerContract: updatedUser.charge_per_contract,
-      chargePerContractNegotiable: updatedUser.charge_per_contract_negotiable,
-      bankName: updatedUser.bank_name,
-      accountNumber: updatedUser.account_number,
-      governmentId: updatedUser.government_id,
-      businessRegDoc: updatedUser.business_reg_doc,
-      isSuspended: updatedUser.is_suspended
+      id: user._id.toString(),
+      fullName: user.fullName,
+      email: user.email,
+      role: user.role,
+      phoneNumber: user.phoneNumber,
+      gender: user.gender,
+      address: user.address,
+      state: user.state,
+      city: user.city,
+      otherCity: user.otherCity,
+      profilePhoto: user.profilePhoto,
+      isAdmin: user.isAdmin,
+      adminRole: user.adminRole,
+      subscriptionTier: user.subscriptionTier,
+      cleanerType: user.cleanerType,
+      clientType: user.clientType,
+      companyName: user.companyName,
+      companyAddress: user.companyAddress,
+      experience: user.experience,
+      bio: user.bio,
+      services: user.services || [],
+      chargeHourly: user.chargeHourly,
+      chargeDaily: user.chargeDaily,
+      chargePerContract: user.chargePerContract,
+      chargePerContractNegotiable: user.chargePerContractNegotiable,
+      bankName: user.bankName,
+      accountNumber: user.accountNumber,
+      governmentId: user.governmentId,
+      businessRegDoc: user.businessRegDoc,
+      isSuspended: user.isSuspended
     };
     
     res.json(userData);
@@ -426,91 +473,82 @@ app.put('/api/users/me', protect, async (req: ExpressRequest, res: ExpressRespon
 
 app.get('/api/cleaners', async (req: ExpressRequest, res: ExpressResponse) => {
   try {
-    // Advanced query to get aggregated rating and a snippet of recent reviews
-    const result = await pool.query(`
-      SELECT 
-        u.*,
-        COALESCE(AVG(r.rating), 5.0) as avg_rating,
-        COUNT(r.id) as review_count,
-        (
-          SELECT json_agg(revs) 
-          FROM (
-            SELECT reviewer_name, rating, comment, created_at 
-            FROM reviews 
-            WHERE cleaner_id = u.id 
-            ORDER BY created_at DESC 
-            LIMIT 3
-          ) revs
-        ) as recent_reviews
-      FROM users u
-      LEFT JOIN reviews r ON u.id = r.cleaner_id
-      WHERE u.role = 'cleaner' AND u.is_suspended = false
-      GROUP BY u.id
-    `);
+    const users = await User.find({ role: 'cleaner', isSuspended: false }).lean();
 
-    // Format for frontend
-    const cleaners = result.rows.map(c => ({
-      id: c.id,
-      name: c.full_name,
-      photoUrl: c.profile_photo,
-      rating: parseFloat(parseFloat(c.avg_rating).toFixed(1)),
-      reviews: parseInt(c.review_count),
-      serviceTypes: typeof c.services === 'string' ? JSON.parse(c.services) : (c.services || []),
-      state: c.state,
-      city: c.city,
-      otherCity: c.other_city,
-      experience: c.experience,
-      bio: c.bio,
-      isVerified: !!c.business_reg_doc,
-      chargeHourly: c.charge_hourly,
-      chargeDaily: c.charge_daily,
-      chargePerContract: c.charge_per_contract,
-      chargePerContractNegotiable: c.charge_per_contract_negotiable,
-      subscriptionTier: c.subscription_tier,
-      cleanerType: c.cleaner_type,
-      reviewsData: c.recent_reviews || []
+    // Get reviews for all cleaners
+    const cleanersWithData = await Promise.all(users.map(async (c) => {
+      const reviews = await Review.find({ cleanerId: c._id.toString() }).lean();
+      const recentReviews = await Review.find({ cleanerId: c._id.toString() })
+        .sort({ createdAt: -1 })
+        .limit(3)
+        .lean();
+      
+      const avgRating = reviews.length > 0 
+        ? reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length 
+        : 5.0;
+
+      return {
+        id: c._id.toString(),
+        name: c.fullName,
+        photoUrl: c.profilePhoto,
+        rating: parseFloat(avgRating.toFixed(1)),
+        reviews: reviews.length,
+        serviceTypes: c.services || [],
+        state: c.state,
+        city: c.city,
+        otherCity: c.otherCity,
+        experience: c.experience,
+        bio: c.bio,
+        isVerified: !!c.businessRegDoc,
+        chargeHourly: c.chargeHourly,
+        chargeDaily: c.chargeDaily,
+        chargePerContract: c.chargePerContract,
+        chargePerContractNegotiable: c.chargePerContractNegotiable,
+        subscriptionTier: c.subscriptionTier,
+        cleanerType: c.cleanerType,
+        reviewsData: recentReviews.map(r => ({
+          reviewerName: r.reviewerName,
+          rating: r.rating,
+          comment: r.comment,
+          createdAt: r.createdAt
+        }))
+      };
     }));
-    res.json(cleaners);
+
+    res.json(cleanersWithData);
   } catch (error) { handleError(res, error); }
 });
 
 app.get('/api/cleaners/:id', async (req: ExpressRequest, res: ExpressResponse) => {
     try {
-        const result = await pool.query(`
-            SELECT 
-                u.*,
-                COALESCE(AVG(r.rating), 5.0) as avg_rating,
-                COUNT(r.id) as review_count,
-                (SELECT json_agg(r.*) FROM reviews r WHERE r.cleaner_id = u.id) as reviews_data
-            FROM users u
-            LEFT JOIN reviews r ON u.id = r.cleaner_id
-            WHERE u.id = $1 AND u.role = 'cleaner'
-            GROUP BY u.id
-        `, [req.params.id]);
+        const user = await User.findOne({ _id: req.params.id, role: 'cleaner' }).lean();
+        if (!user) return res.status(404).json({ message: 'Cleaner not found' });
 
-        const c = result.rows[0];
-        if (!c) return res.status(404).json({ message: 'Cleaner not found' });
+        const reviews = await Review.find({ cleanerId: req.params.id }).lean();
+        const avgRating = reviews.length > 0 
+          ? reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length 
+          : 5.0;
 
         const cleaner = {
-            id: c.id,
-            name: c.full_name,
-            photoUrl: c.profile_photo,
-            rating: parseFloat(parseFloat(c.avg_rating).toFixed(1)),
-            reviews: parseInt(c.review_count),
-            serviceTypes: typeof c.services === 'string' ? JSON.parse(c.services) : (c.services || []),
-            state: c.state,
-            city: c.city,
-            otherCity: c.other_city,
-            experience: c.experience,
-            bio: c.bio,
-            isVerified: !!c.business_reg_doc,
-            chargeHourly: c.charge_hourly,
-            chargeDaily: c.charge_daily,
-            chargePerContract: c.charge_per_contract,
-            chargePerContractNegotiable: c.charge_per_contract_negotiable,
-            subscriptionTier: c.subscription_tier,
-            cleanerType: c.cleaner_type,
-            reviewsData: c.reviews_data || []
+            id: user._id.toString(),
+            name: user.fullName,
+            photoUrl: user.profilePhoto,
+            rating: parseFloat(avgRating.toFixed(1)),
+            reviews: reviews.length,
+            serviceTypes: user.services || [],
+            state: user.state,
+            city: user.city,
+            otherCity: user.otherCity,
+            experience: user.experience,
+            bio: user.bio,
+            isVerified: !!user.businessRegDoc,
+            chargeHourly: user.chargeHourly,
+            chargeDaily: user.chargeDaily,
+            chargePerContract: user.chargePerContract,
+            chargePerContractNegotiable: user.chargePerContractNegotiable,
+            subscriptionTier: user.subscriptionTier,
+            cleanerType: user.cleanerType,
+            reviewsData: reviews || []
         };
         res.json(cleaner);
     } catch (error) { handleError(res, error); }
@@ -523,68 +561,92 @@ app.post('/api/bookings', protect, async (req: ExpressRequest, res: ExpressRespo
   const authReq = req as AuthRequest;
   const { cleanerId, service, date, amount, totalAmount, paymentMethod } = req.body;
   try {
-    const cleanerRes = await pool.query('SELECT full_name FROM users WHERE id = $1', [cleanerId]);
-    const cleanerName = cleanerRes.rows[0]?.full_name || 'Cleaner';
+    const cleaner = await User.findById(cleanerId);
+    const cleanerName = cleaner?.fullName || 'Cleaner';
     
-    const clientRes = await pool.query('SELECT full_name FROM users WHERE id = $1', [authReq.user!.id]);
-    const clientName = clientRes.rows[0]?.full_name || 'Client';
+    const client = await User.findById(authReq.user!.id);
+    const clientName = client?.fullName || 'Client';
 
-    const result = await pool.query(
-      `INSERT INTO bookings (
-        client_id, cleaner_id, client_name, cleaner_name, service, date, amount, total_amount, payment_method, status, payment_status, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'Upcoming', $10, NOW()) RETURNING *`,
-      [authReq.user!.id, cleanerId, clientName, cleanerName, service, date, amount, totalAmount, paymentMethod, paymentMethod === 'Direct' ? 'Not Applicable' : 'Pending Payment']
-    );
+    const booking = await Booking.create({
+      clientId: authReq.user!.id,
+      cleanerId,
+      clientName,
+      cleanerName,
+      serviceType: service,
+      date,
+      totalPrice: totalAmount || amount,
+      paymentMethod,
+      status: 'Upcoming',
+      paymentStatus: paymentMethod === 'Direct' ? 'Not Applicable' : 'Pending Payment'
+    });
 
-    // camelCase result keys manually or let utility handle it if available. 
-    // Here we return row directly, frontend types usually adapted or we should map.
-    const b = result.rows[0];
-    const booking = {
-        id: b.id,
-        clientId: b.client_id,
-        cleanerId: b.cleaner_id,
-        clientName: b.client_name,
-        cleanerName: b.cleaner_name,
-        service: b.service,
-        date: b.date,
-        amount: b.amount,
-        totalAmount: b.total_amount,
-        paymentMethod: b.payment_method,
-        status: b.status,
-        paymentStatus: b.payment_status,
-        jobApprovedByClient: b.job_approved_by_client,
-        reviewSubmitted: b.review_submitted
+    const bookingData = {
+        id: booking._id.toString(),
+        clientId: booking.clientId,
+        cleanerId: booking.cleanerId,
+        clientName: booking.clientName,
+        cleanerName: booking.cleanerName,
+        service: booking.serviceType,
+        date: booking.date,
+        amount: booking.totalPrice,
+        totalAmount: booking.totalPrice,
+        paymentMethod: booking.paymentMethod,
+        status: booking.status,
+        paymentStatus: booking.paymentStatus,
+        jobApprovedByClient: false,
+        reviewSubmitted: booking.reviewSubmitted
     };
 
     await sendEmail(authReq.user!.id, 'Booking Confirmation', `You booked ${cleanerName} for ${service}.`);
-    res.status(201).json(booking);
+    res.status(201).json(bookingData);
   } catch (error) { handleError(res, error, 'Booking failed'); }
 });
 
 app.post('/api/bookings/:id/cancel', protect, async (req: ExpressRequest, res: ExpressResponse) => {
   try {
-    const result = await pool.query("UPDATE bookings SET status = 'Cancelled' WHERE id = $1 RETURNING *", [req.params.id]);
-    const b = result.rows[0];
-    res.json({ ...b, paymentStatus: b.payment_status, cleanerName: b.cleaner_name, clientName: b.client_name, totalAmount: b.total_amount, cleanerId: b.cleaner_id, clientId: b.client_id });
+    const booking = await Booking.findByIdAndUpdate(
+      req.params.id,
+      { status: 'Cancelled' },
+      { new: true }
+    );
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    
+    res.json({ 
+      ...booking.toObject(), 
+      paymentStatus: booking.paymentStatus, 
+      cleanerName: booking.cleanerName, 
+      clientName: booking.clientName, 
+      totalAmount: booking.totalPrice, 
+      cleanerId: booking.cleanerId, 
+      clientId: booking.clientId 
+    });
   } catch (error) { handleError(res, error); }
 });
 
 app.post('/api/bookings/:id/complete', protect, async (req: ExpressRequest, res: ExpressResponse) => {
   try {
-    const bookingRes = await pool.query('SELECT * FROM bookings WHERE id = $1', [req.params.id]);
-    const booking = bookingRes.rows[0];
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
     
-    let newPaymentStatus = booking.payment_status;
-    if (booking.payment_method === 'Escrow' && booking.payment_status === 'Confirmed') {
+    let newPaymentStatus = booking.paymentStatus;
+    if (booking.paymentMethod === 'Escrow' && booking.paymentStatus === 'Confirmed') {
       newPaymentStatus = 'Pending Payout';
     }
 
-    const result = await pool.query(
-      "UPDATE bookings SET status = 'Completed', job_approved_by_client = true, payment_status = $1 WHERE id = $2 RETURNING *", 
-      [newPaymentStatus, req.params.id]
-    );
-    const b = result.rows[0];
-    res.json({ ...b, paymentStatus: b.payment_status, cleanerName: b.cleaner_name, clientName: b.client_name, totalAmount: b.total_amount, cleanerId: b.cleaner_id, clientId: b.client_id, jobApprovedByClient: b.job_approved_by_client });
+    booking.status = 'Completed';
+    booking.paymentStatus = newPaymentStatus;
+    await booking.save();
+
+    res.json({ 
+      ...booking.toObject(), 
+      paymentStatus: booking.paymentStatus, 
+      cleanerName: booking.cleanerName, 
+      clientName: booking.clientName, 
+      totalAmount: booking.totalPrice, 
+      cleanerId: booking.cleanerId, 
+      clientId: booking.clientId,
+      jobApprovedByClient: true
+    });
   } catch (error) { handleError(res, error); }
 });
 
@@ -592,16 +654,21 @@ app.post('/api/bookings/:id/review', protect, async (req: ExpressRequest, res: E
   const authReq = req as AuthRequest;
   const { rating, timeliness, thoroughness, conduct, comment, cleanerId } = req.body;
   try {
-    const clientRes = await pool.query('SELECT full_name FROM users WHERE id = $1', [authReq.user!.id]);
-    const reviewerName = clientRes.rows[0]?.full_name || 'Anonymous';
+    const client = await User.findById(authReq.user!.id);
+    const reviewerName = client?.fullName || 'Anonymous';
 
-    await pool.query(
-      `INSERT INTO reviews (booking_id, cleaner_id, reviewer_name, rating, timeliness, thoroughness, conduct, comment, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())`,
-      [req.params.id, cleanerId, reviewerName, rating, timeliness, thoroughness, conduct, comment]
-    );
+    await Review.create({
+      bookingId: req.params.id,
+      cleanerId,
+      reviewerName,
+      rating,
+      timeliness,
+      thoroughness,
+      conduct,
+      comment
+    });
     
-    await pool.query("UPDATE bookings SET review_submitted = true WHERE id = $1", [req.params.id]);
+    await Booking.findByIdAndUpdate(req.params.id, { reviewSubmitted: true });
     res.json({ message: 'Review submitted' });
   } catch (error) { handleError(res, error); }
 });
@@ -609,12 +676,15 @@ app.post('/api/bookings/:id/review', protect, async (req: ExpressRequest, res: E
 app.post('/api/bookings/:id/receipt', protect, async (req: ExpressRequest, res: ExpressResponse) => {
   const { name, dataUrl } = req.body;
   try {
-    const receiptJson = JSON.stringify({ name, dataUrl });
-    const result = await pool.query(
-      "UPDATE bookings SET payment_receipt = $1, payment_status = 'Pending Admin Confirmation' WHERE id = $2 RETURNING *",
-      [receiptJson, req.params.id]
+    const booking = await Booking.findByIdAndUpdate(
+      req.params.id,
+      { 
+        escrowPaymentDetails: { name, dataUrl },
+        paymentStatus: 'Pending Admin Confirmation' 
+      },
+      { new: true }
     );
-    res.json(result.rows[0]); // Returns raw DB row, frontend might need mapping if used directly
+    res.json(booking);
   } catch (error) { handleError(res, error); }
 });
 
@@ -625,13 +695,19 @@ app.post('/api/users/subscription/upgrade', protect, async (req: ExpressRequest,
   const authReq = req as AuthRequest;
   const { plan } = req.body;
   try {
-    const result = await pool.query(
-      "UPDATE users SET pending_subscription = $1 WHERE id = $2 RETURNING *",
-      [plan, authReq.user!.id]
+    const user = await User.findByIdAndUpdate(
+      authReq.user!.id,
+      { pendingSubscription: plan },
+      { new: true }
     );
-    const u = result.rows[0];
-    // Return mapped user
-    res.json({ ...u, fullName: u.full_name, subscriptionTier: u.subscription_tier, pendingSubscription: u.pending_subscription });
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    
+    res.json({ 
+      ...user.toObject(), 
+      fullName: user.fullName, 
+      subscriptionTier: user.subscriptionTier, 
+      pendingSubscription: user.pendingSubscription 
+    });
   } catch (error) { handleError(res, error); }
 });
 
@@ -639,13 +715,18 @@ app.post('/api/users/subscription/receipt', protect, async (req: ExpressRequest,
   const authReq = req as AuthRequest;
   const { name, dataUrl } = req.body;
   try {
-    const receiptJson = JSON.stringify({ name, dataUrl });
-    const result = await pool.query(
-      "UPDATE users SET subscription_receipt = $1 WHERE id = $2 RETURNING *",
-      [receiptJson, authReq.user!.id]
+    const user = await User.findByIdAndUpdate(
+      authReq.user!.id,
+      { subscriptionReceipt: { name, dataUrl } },
+      { new: true }
     );
-    const u = result.rows[0];
-    res.json({ ...u, fullName: u.full_name, subscriptionReceipt: JSON.parse(u.subscription_receipt) });
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    
+    res.json({ 
+      ...user.toObject(), 
+      fullName: user.fullName, 
+      subscriptionReceipt: user.subscriptionReceipt 
+    });
   } catch (error) { handleError(res, error); }
 });
 
@@ -654,21 +735,21 @@ app.post('/api/users/subscription/receipt', protect, async (req: ExpressRequest,
 // ============================================================================
 app.get('/api/admin/users', protect, admin, async (req: ExpressRequest, res: ExpressResponse) => {
   try {
-    const result = await pool.query('SELECT * FROM users ORDER BY created_at DESC');
-    res.json(result.rows.map(u => ({
-        id: u.id,
-        fullName: u.full_name,
+    const users = await User.find().sort({ createdAt: -1 }).lean();
+    res.json(users.map(u => ({
+        id: u._id.toString(),
+        fullName: u.fullName,
         email: u.email,
         role: u.role,
-        isAdmin: u.is_admin,
-        adminRole: u.admin_role,
-        isSuspended: u.is_suspended,
-        subscriptionTier: u.subscription_tier,
-        pendingSubscription: u.pending_subscription,
-        subscriptionReceipt: u.subscription_receipt ? JSON.parse(u.subscription_receipt) : null,
-        clientType: u.client_type,
-        cleanerType: u.cleaner_type,
-        companyName: u.company_name,
+        isAdmin: u.isAdmin,
+        adminRole: u.adminRole,
+        isSuspended: u.isSuspended,
+        subscriptionTier: u.subscriptionTier,
+        pendingSubscription: u.pendingSubscription,
+        subscriptionReceipt: u.subscriptionReceipt,
+        clientType: u.clientType,
+        cleanerType: u.cleanerType,
+        companyName: u.companyName,
         bookingHistory: [] 
     })));
   } catch (error) { handleError(res, error); }
@@ -677,41 +758,43 @@ app.get('/api/admin/users', protect, admin, async (req: ExpressRequest, res: Exp
 app.patch('/api/admin/users/:id/status', protect, admin, async (req: ExpressRequest, res: ExpressResponse) => {
   const { isSuspended } = req.body;
   try {
-    await pool.query('UPDATE users SET is_suspended = $1 WHERE id = $2', [isSuspended, req.params.id]);
+    await User.findByIdAndUpdate(req.params.id, { isSuspended });
     res.json({ message: 'User status updated' });
   } catch (error) { handleError(res, error); }
 });
 
 app.delete('/api/admin/users/:id', protect, admin, async (req: ExpressRequest, res: ExpressResponse) => {
   try {
-    await pool.query('DELETE FROM users WHERE id = $1', [req.params.id]);
+    await User.findByIdAndDelete(req.params.id);
     res.json({ message: 'User deleted' });
   } catch (error) { handleError(res, error); }
 });
 
 app.post('/api/admin/bookings/:id/confirm-payment', protect, admin, async (req: ExpressRequest, res: ExpressResponse) => {
   try {
-    await pool.query("UPDATE bookings SET payment_status = 'Confirmed' WHERE id = $1", [req.params.id]);
+    await Booking.findByIdAndUpdate(req.params.id, { paymentStatus: 'Confirmed' });
     res.json({ message: 'Payment confirmed' });
   } catch (error) { handleError(res, error); }
 });
 
 app.post('/api/admin/bookings/:id/mark-paid', protect, admin, async (req: ExpressRequest, res: ExpressResponse) => {
   try {
-    await pool.query("UPDATE bookings SET payment_status = 'Paid' WHERE id = $1", [req.params.id]);
+    await Booking.findByIdAndUpdate(req.params.id, { paymentStatus: 'Paid' });
     res.json({ message: 'Marked as paid' });
   } catch (error) { handleError(res, error); }
 });
 
 app.post('/api/admin/users/:id/approve-subscription', protect, admin, async (req: ExpressRequest, res: ExpressResponse) => {
   try {
-    const userRes = await pool.query('SELECT pending_subscription FROM users WHERE id = $1', [req.params.id]);
-    const plan = userRes.rows[0]?.pending_subscription;
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    
+    const plan = user.pendingSubscription;
     if (!plan) return res.status(400).json({ message: 'No pending subscription' });
 
     // Calculate subscription details
-    const subscriptionDate = new Date().toISOString();
-    const subscriptionEndDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // 30 days from now
+    const subscriptionDate = new Date();
+    const subscriptionEndDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days from now
     
     // Map plan to monthly price (in NGN)
     const planPrices: Record<string, number> = {
@@ -728,10 +811,14 @@ app.post('/api/admin/users/:id/approve-subscription', protect, admin, async (req
     };
     const subscriptionAmount = planPrices[plan] || 0;
 
-    await pool.query(
-      "UPDATE users SET subscription_tier = $1, pending_subscription = NULL, subscription_receipt = NULL, subscription_date = $2, subscription_end_date = $3, subscription_amount = $4 WHERE id = $5",
-      [plan, subscriptionDate, subscriptionEndDate, subscriptionAmount, req.params.id]
-    );
+    user.subscriptionTier = plan;
+    user.pendingSubscription = undefined;
+    user.subscriptionReceipt = undefined;
+    user.subscriptionDate = subscriptionDate;
+    user.subscriptionEndDate = subscriptionEndDate;
+    user.subscriptionAmount = subscriptionAmount;
+    await user.save();
+
     res.json({ message: 'Subscription approved' });
   } catch (error) { handleError(res, error); }
 });
@@ -741,13 +828,21 @@ app.post('/api/admin/create-admin', protect, admin, async (req: ExpressRequest, 
   try {
      const salt = await bcrypt.genSalt(10);
      const hashedPassword = await bcrypt.hash(password, salt);
-     const result = await pool.query(
-         `INSERT INTO users (full_name, email, password_hash, role, is_admin, admin_role, created_at)
-          VALUES ($1, $2, $3, 'admin', true, $4, NOW()) RETURNING *`,
-         [fullName, email, hashedPassword, role]
-     );
-     const u = result.rows[0];
-     res.status(201).json({ ...u, fullName: u.full_name, isAdmin: u.is_admin, adminRole: u.admin_role });
+     const newAdmin = await User.create({
+         fullName,
+         email,
+         password: hashedPassword,
+         role: 'client',
+         isAdmin: true,
+         adminRole: role
+     });
+     
+     res.status(201).json({ 
+       ...newAdmin.toObject(), 
+       fullName: newAdmin.fullName, 
+       isAdmin: newAdmin.isAdmin, 
+       adminRole: newAdmin.adminRole 
+     });
   } catch (error) { handleError(res, error); }
 });
 
@@ -758,11 +853,13 @@ app.post('/api/support', protect, async (req: ExpressRequest, res: ExpressRespon
     const authReq = req as AuthRequest;
     const { category, subject, message } = req.body;
     try {
-        const result = await pool.query(
-            "INSERT INTO support_tickets (user_id, category, subject, message, created_at) VALUES ($1, $2, $3, $4, NOW()) RETURNING *",
-            [authReq.user!.id, category, subject, message]
-        );
-        res.status(201).json(result.rows[0]);
+        const ticket = await SupportTicket.create({
+            userId: authReq.user!.id,
+            category,
+            subject,
+            description: message
+        });
+        res.status(201).json(ticket);
     } catch (error) { 
         handleError(res, error);
     }
@@ -771,17 +868,20 @@ app.post('/api/support', protect, async (req: ExpressRequest, res: ExpressRespon
 app.get('/api/support/my', protect, async (req: ExpressRequest, res: ExpressResponse) => {
     const authReq = req as AuthRequest;
     try {
-        const result = await pool.query("SELECT * FROM support_tickets WHERE user_id = $1 ORDER BY created_at DESC", [authReq.user!.id]);
-        res.json(result.rows.map(r => ({
-            id: r.id,
-            userId: r.user_id,
+        const tickets = await SupportTicket.find({ userId: authReq.user!.id })
+            .sort({ createdAt: -1 })
+            .lean();
+        
+        res.json(tickets.map(r => ({
+            id: r._id.toString(),
+            userId: r.userId,
             category: r.category,
             subject: r.subject,
-            message: r.message,
+            message: r.description,
             status: r.status || 'Open',
-            adminResponse: r.admin_response,
-            createdAt: r.created_at,
-            updatedAt: r.updated_at
+            adminResponse: r.adminNotes,
+            createdAt: r.createdAt,
+            updatedAt: r.updatedAt
         })));
     } catch (error) { 
         handleError(res, error);
@@ -790,26 +890,29 @@ app.get('/api/support/my', protect, async (req: ExpressRequest, res: ExpressResp
 
 app.get('/api/admin/support', protect, admin, async (req: ExpressRequest, res: ExpressResponse) => {
     try {
-        const result = await pool.query(`
-            SELECT st.*, u.full_name, u.role 
-            FROM support_tickets st 
-            JOIN users u ON st.user_id = u.id 
-            ORDER BY st.status ASC, st.created_at DESC
-        `);
+        const tickets = await SupportTicket.find()
+            .sort({ status: 1, createdAt: -1 })
+            .lean();
         
-        res.json(result.rows.map(r => ({
-            id: r.id,
-            userId: r.user_id,
-            userName: r.full_name || 'Unknown',
-            userRole: r.role || 'User',
-            category: r.category,
-            subject: r.subject,
-            message: r.message,
-            status: r.status || 'Open',
-            adminResponse: r.admin_response,
-            createdAt: r.created_at,
-            updatedAt: r.updated_at
-        })));
+        // Get user details for each ticket
+        const ticketsWithUser = await Promise.all(tickets.map(async (r) => {
+            const user = await User.findById(r.userId).lean();
+            return {
+                id: r._id.toString(),
+                userId: r.userId,
+                userName: user?.fullName || 'Unknown',
+                userRole: user?.role || 'User',
+                category: r.category,
+                subject: r.subject,
+                message: r.description,
+                status: r.status || 'Open',
+                adminResponse: r.adminNotes,
+                createdAt: r.createdAt,
+                updatedAt: r.updatedAt
+            };
+        }));
+        
+        res.json(ticketsWithUser);
     } catch (error) { 
         handleError(res, error);
     }
@@ -818,11 +921,16 @@ app.get('/api/admin/support', protect, admin, async (req: ExpressRequest, res: E
 app.post('/api/admin/support/:id/resolve', protect, admin, async (req: ExpressRequest, res: ExpressResponse) => {
     const { adminResponse } = req.body;
     try {
-        const result = await pool.query(
-            "UPDATE support_tickets SET admin_response = $1, status = 'Resolved', updated_at = NOW() WHERE id = $2 RETURNING *",
-            [adminResponse, req.params.id]
+        const ticket = await SupportTicket.findByIdAndUpdate(
+            req.params.id,
+            { 
+                adminNotes: adminResponse, 
+                status: 'Resolved',
+                updatedAt: new Date()
+            },
+            { new: true }
         );
-        res.json(result.rows[0]);
+        res.json(ticket);
     } catch (error) { 
         handleError(res, error);
     }
@@ -838,73 +946,95 @@ app.post('/api/chats', protect, async (req: ExpressRequest, res: ExpressResponse
 
     try {
         // Check if chat already exists
-        const existingChat = await pool.query(
-            `SELECT * FROM chats WHERE (participant_one = $1 AND participant_two = $2) OR (participant_one = $2 AND participant_two = $1)`,
-            [userId, participantId]
-        );
+        const existingChat = await Chat.findOne({
+            $or: [
+                { clientId: userId, cleanerId: participantId },
+                { clientId: participantId, cleanerId: userId }
+            ]
+        });
 
-        if (existingChat.rows.length > 0) {
-            return res.json({ id: existingChat.rows[0].id, participants: [existingChat.rows[0].participant_one, existingChat.rows[0].participant_two], participantNames: {} }); 
+        if (existingChat) {
+            return res.json({ 
+                id: existingChat._id.toString(), 
+                participants: [existingChat.clientId, existingChat.cleanerId], 
+                participantNames: {} 
+            }); 
         }
 
-        const result = await pool.query(
-            'INSERT INTO chats (participant_one, participant_two) VALUES ($1, $2) RETURNING *',
-            [userId, participantId]
-        );
-        res.status(201).json({ id: result.rows[0].id, participants: [userId, participantId], participantNames: {} });
+        const chat = await Chat.create({
+            clientId: userId,
+            cleanerId: participantId
+        });
+        
+        res.status(201).json({ 
+            id: chat._id.toString(), 
+            participants: [userId, participantId], 
+            participantNames: {} 
+        });
     } catch (error) { handleError(res, error, 'Failed to create chat'); }
 });
 
 app.get('/api/chats', protect, async (req: ExpressRequest, res: ExpressResponse) => {
     const authReq = req as AuthRequest;
     try {
-        const result = await pool.query(
-            `SELECT c.*, 
-                    m.text as last_message_text, 
-                    m.sender_id as last_message_sender, 
-                    m.created_at as last_message_time,
-                    u1.full_name as name1, u2.full_name as name2
-             FROM chats c
-             LEFT JOIN messages m ON c.last_message_id = m.id
-             JOIN users u1 ON c.participant_one = u1.id
-             JOIN users u2 ON c.participant_two = u2.id
-             WHERE c.participant_one = $1 OR c.participant_two = $1
-             ORDER BY m.created_at DESC NULLS LAST`,
-            [authReq.user!.id]
-        );
+        const chats = await Chat.find({
+            $or: [{ clientId: authReq.user!.id }, { cleanerId: authReq.user!.id }]
+        }).lean();
 
-        const chats = result.rows.map(row => ({
-            id: row.id,
-            participants: [row.participant_one, row.participant_two],
-            participantNames: {
-                [row.participant_one]: row.name1,
-                [row.participant_two]: row.name2
-            },
-            lastMessage: row.last_message_text ? {
-                text: row.last_message_text,
-                senderId: row.last_message_sender,
-                timestamp: row.last_message_time
-            } : undefined,
-            updatedAt: row.last_message_time || row.created_at
+        const chatsWithDetails = await Promise.all(chats.map(async (c) => {
+            let lastMessage = undefined;
+            if (c.lastMessageId) {
+                const msg = await Message.findById(c.lastMessageId).lean();
+                if (msg) {
+                    lastMessage = {
+                        text: msg.content,
+                        senderId: msg.senderId,
+                        timestamp: msg.timestamp
+                    };
+                }
+            }
+
+            // Get participant names
+            const client = await User.findById(c.clientId).lean();
+            const cleaner = await User.findById(c.cleanerId).lean();
+
+            return {
+                id: c._id.toString(),
+                participants: [c.clientId, c.cleanerId],
+                participantNames: {
+                    [c.clientId]: client?.fullName || 'User',
+                    [c.cleanerId]: cleaner?.fullName || 'User'
+                },
+                lastMessage,
+                updatedAt: lastMessage?.timestamp || c.createdAt
+            };
         }));
-        res.json(chats);
+
+        // Sort by most recent
+        chatsWithDetails.sort((a, b) => {
+            const timeA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+            const timeB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+            return timeB - timeA;
+        });
+
+        res.json(chatsWithDetails);
     } catch (error) { handleError(res, error); }
 });
 
 app.get('/api/chats/:id/messages', protect, async (req: ExpressRequest, res: ExpressResponse) => {
     try {
-        const result = await pool.query(
-            'SELECT * FROM messages WHERE chat_id = $1 ORDER BY created_at ASC',
-            [req.params.id]
-        );
-        const messages = result.rows.map(r => ({
-            id: r.id,
-            chatId: r.chat_id,
-            senderId: r.sender_id,
-            text: r.text,
-            timestamp: r.created_at
+        const messages = await Message.find({ chatId: req.params.id })
+            .sort({ timestamp: 1 })
+            .lean();
+        
+        const formattedMessages = messages.map(r => ({
+            id: r._id.toString(),
+            chatId: r.chatId,
+            senderId: r.senderId,
+            text: r.content,
+            timestamp: r.timestamp
         }));
-        res.json(messages);
+        res.json(formattedMessages);
     } catch (error) { handleError(res, error); }
 });
 
@@ -912,21 +1042,24 @@ app.post('/api/chats/:id/messages', protect, async (req: ExpressRequest, res: Ex
     const authReq = req as AuthRequest;
     const { text } = req.body;
     try {
-        const result = await pool.query(
-            'INSERT INTO messages (chat_id, sender_id, text) VALUES ($1, $2, $3) RETURNING *',
-            [req.params.id, authReq.user!.id, text]
-        );
-        const message = result.rows[0];
+        const message = await Message.create({
+            chatId: req.params.id,
+            senderId: authReq.user!.id,
+            content: text
+        });
         
         // Update chat last message
-        await pool.query('UPDATE chats SET last_message_id = $1, updated_at = NOW() WHERE id = $2', [message.id, req.params.id]);
+        await Chat.findByIdAndUpdate(req.params.id, { 
+            lastMessageId: message._id.toString(),
+            updatedAt: new Date()
+        });
 
         res.status(201).json({
-            id: message.id,
-            chatId: message.chat_id,
-            senderId: message.sender_id,
-            text: message.text,
-            timestamp: message.created_at
+            id: message._id.toString(),
+            chatId: message.chatId,
+            senderId: message.senderId,
+            text: message.content,
+            timestamp: message.timestamp
         });
     } catch (error) { handleError(res, error); }
 });
@@ -953,30 +1086,31 @@ app.post('/api/search/ai', async (req: ExpressRequest, res: ExpressResponse) => 
     const cleanJson = text.replace(/```json|```/g, '').trim();
     const criteria = JSON.parse(cleanJson);
 
-    // Build SQL Query based on extracted criteria
-    let sql = "SELECT id FROM users WHERE role = 'cleaner' AND is_suspended = false";
-    const params: any[] = [];
-    let paramIndex = 1;
+    // Build MongoDB Query based on extracted criteria
+    const filter: any = { role: 'cleaner', isSuspended: false };
 
     if (criteria.location) {
-        sql += ` AND (city ILIKE $${paramIndex} OR state ILIKE $${paramIndex} OR other_city ILIKE $${paramIndex})`;
-        params.push(`%${criteria.location}%`);
-        paramIndex++;
+        filter.$or = [
+            { city: { $regex: criteria.location, $options: 'i' } },
+            { state: { $regex: criteria.location, $options: 'i' } },
+            { otherCity: { $regex: criteria.location, $options: 'i' } }
+        ];
     }
-    // Very basic service match, production should use array contains or full text search
+    
     if (criteria.service) {
-        sql += ` AND services::text ILIKE $${paramIndex}`;
-        params.push(`%${criteria.service}%`);
-        paramIndex++;
+        filter.services = { $regex: criteria.service, $options: 'i' };
     }
+    
     if (criteria.maxPrice) {
-        sql += ` AND (charge_hourly <= $${paramIndex} OR charge_daily <= $${paramIndex})`;
-        params.push(criteria.maxPrice);
-        paramIndex++;
+        filter.$or = filter.$or || [];
+        filter.$or.push(
+            { chargeHourly: { $lte: criteria.maxPrice } },
+            { chargeDaily: { $lte: criteria.maxPrice } }
+        );
     }
 
-    const result = await pool.query(sql, params);
-    res.json({ matchingIds: result.rows.map(r => r.id) });
+    const users = await User.find(filter).select('_id').lean();
+    res.json({ matchingIds: users.map(u => u._id.toString()) });
 
   } catch (error) { 
       console.error(error);
@@ -996,8 +1130,8 @@ app.post('/api/contact', (req: ExpressRequest, res: ExpressResponse) => {
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   
-  if (!process.env.DATABASE_URL) {
-      console.warn("WARNING: DATABASE_URL is not set. Database features will fail.");
+  if (!MONGO_URL) {
+      console.warn("WARNING: MONGO_URL is not set. Database features will fail.");
   }
   if (!process.env.API_KEY) {
       console.warn("WARNING: API_KEY is not set. AI features will fail.");
