@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { FacebookIcon, TwitterIcon, InstagramIcon, SparklesIcon, YouTubeIcon, TikTokIcon, XIcon } from './icons';
+import { FacebookIcon, InstagramIcon, SparklesIcon, YouTubeIcon, TikTokIcon, XIcon } from './icons';
 import { View } from '../types';
 
 interface FooterProps {
@@ -77,27 +77,23 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                 <div className="mt-12 border-t pt-8 flex flex-col sm:flex-row justify-between items-center">
                     <p className="text-sm text-gray-500">&copy; {new Date().getFullYear()} Skills Konnect. All rights reserved.</p>
                     <div className="flex space-x-6 mt-4 sm:mt-0">
-                       <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-primary transition-colors">
+                       <a href="https://www.facebook.com/profile.php?id=61582798031435" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-primary transition-colors">
                            <span className="sr-only">Facebook</span>
                            <FacebookIcon className="h-6 w-6" />
                        </a>
-                       <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-primary transition-colors">
+                       <a href="https://www.instagram.com/skillskonnect2024" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-primary transition-colors">
                            <span className="sr-only">Instagram</span>
                            <InstagramIcon className="h-6 w-6" />
                        </a>
-                       <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-primary transition-colors">
-                           <span className="sr-only">Twitter</span>
-                           <TwitterIcon className="h-6 w-6" />
-                       </a>
-                        <a href="https://x.com" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-primary transition-colors">
+                       <a href="https://x.com/skillskonnect2" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-primary transition-colors">
                            <span className="sr-only">X</span>
                            <XIcon className="h-6 w-6" />
                        </a>
-                       <a href="https://youtube.com" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-primary transition-colors">
+                       <a href="https://youtube.com/@emekejohn3428?si=LRsoCiq20jFFoemU" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-primary transition-colors">
                            <span className="sr-only">YouTube</span>
                            <YouTubeIcon className="h-6 w-6" />
                        </a>
-                       <a href="https://tiktok.com" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-primary transition-colors">
+                       <a href="https://www.tiktok.com/@skillskonnect?_r=1&_t=ZS-94Oh7qSziiY" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-primary transition-colors">
                            <span className="sr-only">TikTok</span>
                            <TikTokIcon className="h-6 w-6" />
                        </a>
