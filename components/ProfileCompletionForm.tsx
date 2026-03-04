@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { User, UserType, ChargeRateType } from '../types';
-import { countries, phoneCodes, getPricingModel } from '../constants/countries';
+import { countries, phoneCodes, getPricingModel, getCountryCurrency } from '../constants/countries';
 import { skillCategories, chargeRateTypes } from '../constants/skillTypes';
 
 interface ProfileCompletionFormProps {
@@ -91,6 +91,7 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
   const isIndividual = isIndividualClient || isIndividualWorker;
   const isCompany = isCompanyClient || isCompanyWorker;
   const pricingModel = getPricingModel((formData.country as string) || 'Nigeria');
+  const countryCurrencySymbol = getCountryCurrency((formData.country as string) || 'Nigeria').symbol;
   const isNegotiable = formData.chargeRateType === 'Not Fixed';
 
   return (
@@ -397,7 +398,7 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
                 {pricingModel === 'hourly' && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Hourly Rate (₦) {!isNegotiable && <span className="text-red-500">*</span>}
+                      Hourly Rate ({countryCurrencySymbol}) {!isNegotiable && <span className="text-red-500">*</span>}
                     </label>
                     <input
                       type="number"
@@ -415,7 +416,7 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
                 {pricingModel === 'daily' && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Daily Rate (₦) {!isNegotiable && <span className="text-red-500">*</span>}
+                      Daily Rate ({countryCurrencySymbol}) {!isNegotiable && <span className="text-red-500">*</span>}
                     </label>
                     <input
                       type="number"
@@ -482,16 +483,25 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
                     <span>At the top of your dashboard near your name and email</span>
                   </li>
                 </ul>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) handleFileUpload('profilePicture', file);
-                  }}
-                  className="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700"
-                  required
-                />
+                <div className="relative border-2 border-dashed border-blue-400 rounded-lg p-6 text-center bg-white hover:bg-blue-50 transition-colors cursor-pointer">
+                  <div className="mb-3">
+                    <svg className="mx-auto h-12 w-12 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                    </svg>
+                  </div>
+                  <p className="text-sm font-semibold text-blue-700 mb-1">Click here to upload your profile picture</p>
+                  <p className="text-xs text-gray-500">PNG, JPG, or JPEG (max 5MB)</p>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleFileUpload('profilePicture', file);
+                    }}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    required
+                  />
+                </div>
                 {formData.profilePicture && (
                   <div className="mt-4 p-4 bg-white rounded-lg border-2 border-green-300">
                     <div className="flex items-center gap-4">

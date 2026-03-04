@@ -58,14 +58,14 @@ export const CleanerCard: React.FC<CleanerCardProps> = ({ cleaner, onClick }) =>
         )}
         {cleaner.serviceTypes && cleaner.serviceTypes.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-2">
-                {cleaner.serviceTypes.slice(0, 3).map((service, idx) => (
+                {cleaner.serviceTypes.slice(0, 2).map((service, idx) => (
                     <span key={idx} className="inline-block bg-blue-50 text-blue-700 text-xs px-2 py-0.5 rounded-full">
                         {service}
                     </span>
                 ))}
-                {cleaner.serviceTypes.length > 3 && (
+                {cleaner.serviceTypes.length > 2 && (
                     <span className="text-xs text-gray-400 self-center">
-                        +{cleaner.serviceTypes.length - 3} more
+                        +{cleaner.serviceTypes.length - 2} more
                     </span>
                 )}
             </div>

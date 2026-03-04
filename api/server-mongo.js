@@ -2145,16 +2145,22 @@ app.post('/api/payment/initialize-flutterwave', authenticateToken, async (req, r
     const user = await User.findOne({ email: req.user.email });
     const userId = user ? user._id.toString() : null;
 
+    // Use AbortController so we don't hang if Flutterwave is slow
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000); // 30s timeout
+
     const flwResponse = await fetch('https://api.flutterwave.com/v3/payments', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${FLW_SECRET_KEY}`,
         'Content-Type': 'application/json'
       },
+      signal: controller.signal,
       body: JSON.stringify({
         tx_ref: reference || `SUB_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
         amount,
         currency: currency.toUpperCase(),
+        payment_options: 'card,banktransfer,ussd',
         redirect_url: redirect_url || `${req.headers.origin || 'https://skillskonnect.online'}/payment/verify`,
         customer: { email: customer?.email || email, name: customer?.name || 'Customer' },
         customizations: customizations || {
@@ -2164,6 +2170,7 @@ app.post('/api/payment/initialize-flutterwave', authenticateToken, async (req, r
         meta: { plan, billingCycle, userId }
       })
     });
+    clearTimeout(timeout);
 
     const flwData = await flwResponse.json();
 
@@ -2179,7 +2186,10 @@ app.post('/api/payment/initialize-flutterwave', authenticateToken, async (req, r
     res.json({ payment_link: flwData.data.link });
   } catch (error) {
     console.error('Flutterwave initialization error:', error);
-    res.status(500).json({ message: error.message || 'Flutterwave initialization failed' });
+    const message = error.name === 'AbortError'
+      ? 'Flutterwave is taking too long to respond. Please try again.'
+      : (error.message || 'Flutterwave initialization failed');
+    res.status(500).json({ message });
   }
 });
 
