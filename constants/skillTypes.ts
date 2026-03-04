@@ -1,84 +1,94 @@
 // Comprehensive skill types organized by category
+// Last updated: March 4, 2026
+
 export const skillCategories = {
-  "Construction & Repair Trades": [
-    "Mechanic (Vehicle)",
-    "Mechanic (Motor Bike)",
+  "Construction & Technical Trades": [
+    "Vehicle Mechanic",
+    "Motorbike Mechanic",
     "Electrician",
-    "Plumber",
-    "Carpenter",
-    "Furniture",
+    "Solar Electrician",
+    "Solar PV Installer",
     "Bricklayer",
     "Mason",
+    "Screeder",
+    "Carpenter",
+    "Furniture Maker",
     "Welder",
     "Fabricator",
     "Painter",
-    "Home Decorator",
-    "Frame Maker"
-  ],
-  "Home & Property Services": [
-    "Roof Installer",
     "Tiler",
-    "Glazier (Glass Cutting)",
-    "AC Technician",
+    "Glazier (Glass Installer)",
+    "Frame Maker",
+    "Roof Installer",
     "Fence Installer",
     "Gate Installer",
-    "Cleaner",
-    "Interior Decorator",
-    "Laundry Services",
-    "Pest Control Technician"
+    "Plumber",
+    "AC Technician"
   ],
-  "Personal & Everyday Services": [
+  "Home & Property Services": [
+    "General Cleaner",
+    "Industrial Cleaner",
+    "Laundry Services",
+    "Dry Cleaner",
+    "Pest Control Technician",
+    "Interior Decorator",
+    "Home Decorator",
+    "Maid (Home Helper)",
+    "Nanny",
+    "Errand Services"
+  ],
+  "Fashion & Clothing": [
     "Tailor",
     "Seamstress",
     "Fashion Designer",
     "Fashion Stylist",
+    "Aso-Oke Specialist"
+  ],
+  "Hair & Grooming": [
     "Barber",
-    "Hairdresser / Hair Stylist",
+    "Hairdresser / Hair Stylist"
+  ],
+  "Beauty & Cosmetics": [
     "Beautician",
     "Makeup Artist",
-    "Pedicurist",
-    "Manicurist",
-    "Gele Tying",
+    "Gele Tying Specialist",
     "Tattoo Artist",
-    "Aso-Oke Specialist",
-    "Maid (Home Helper)",
-    "Dry Cleaner",
-    "Errand Services"
+    "Manicurist",
+    "Pedicurist"
   ],
   "Events & Hospitality": [
-    "Catering and Baking",
+    "Catering Services",
     "Chef",
     "Baker",
     "Cocktail Services",
     "Event Planner",
     "Event Host / MC",
     "Event Decorator",
+    "Event Branding",
     "Event Security / Crowd Control",
     "Ushers",
     "Event Rentals / Party Rentals",
-    "Event Centre / Hall",
+    "Event Centre / Hall Provider",
     "Gift Packaging",
-    "Souvenir Maker",
-    "Event Branding"
+    "Souvenir Maker"
   ],
-  "Entertainment & Creative Arts": [
+  "Entertainment & Creative Industry": [
     "Actor / Actress",
-    "Artist",
     "Singer",
     "Musician",
-    "Animator",
-    "Storyboard Artist",
-    "Dance Choreography",
     "DJ",
     "Live Band",
+    "Dance Choreographer",
+    "Model / Movie Extra",
     "Music Producer",
     "Sound Engineer / Technician",
-    "Voice-over Artist / Voice Coach",
-    "Model / Movie Extras",
     "Scriptwriter",
     "Creative Director",
-    "Stylist",
-    "Bead Maker"
+    "Storyboard Artist",
+    "Artist",
+    "Animator",
+    "Bead Maker",
+    "Voice-over Artist / Voice Coach"
   ],
   "Tech, Media & Digital Services": [
     "Software Developer",
@@ -87,36 +97,36 @@ export const skillCategories = {
     "UX Specialist",
     "Website Manager",
     "Data Analyst",
+    "SEO Specialist",
+    "Email Marketing Specialist",
+    "Social Media Manager",
     "Graphic Designer",
     "Brand Designer",
-    "SEO Specialist",
-    "Social Media Manager",
-    "AI Content Creator",
-    "Podcast Creator",
-    "Video Editor",
-    "Videographer",
-    "Drone Operator",
-    "Photographer",
-    "Brand Photographer",
     "Content Creator",
     "Blogger",
     "Copywriter",
+    "AI Content Creator",
+    "Podcast Creator",
+    "Videographer",
+    "Video Editor",
+    "Drone Operator",
+    "Photographer",
+    "Brand Photographer",
     "Computer Technician",
     "Phone Technician",
     "Satellite Cable Installer"
   ],
   "Professional & Business Services": [
-    "Project Management",
-    "Account Management",
-    "Customer Support",
+    "Project Manager",
+    "Account Manager",
+    "Customer Support Specialist",
     "Virtual Assistant",
-    "Tutoring",
-    "Email Marketing"
+    "Tutor"
   ],
   "Transport & Logistics": [
     "Vehicle Driver",
-    "Motor Bike Driver / Dispatch Rider",
-    "Logistics Services"
+    "Motorbike Driver / Dispatch Rider",
+    "Logistics Services Provider"
   ]
 };
 

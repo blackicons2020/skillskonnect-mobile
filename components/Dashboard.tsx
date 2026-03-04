@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { User, View, VerificationDocuments, Job } from 'types';
-import { PencilIcon, StarIcon, BriefcaseIcon, ChatBubbleLeftRightIcon, LifebuoyIcon } from './icons';
+import { PencilIcon, StarIcon, BriefcaseIcon, ChatBubbleLeftRightIcon, LifebuoyIcon, UserIcon } from './icons';
 import { CLEANING_SERVICES } from '../constants/services';
 import { CLIENT_LIMITS } from '../constants/subscriptions';
 import { ChatInterface } from './ChatInterface';
@@ -305,45 +305,93 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onNavi
         : formData.fullName;
 
     return (
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
-
-            {/* Profile Header with Picture */}
-            <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-                <div className="flex flex-col sm:flex-row items-center gap-6">
-                    {/* Profile Picture */}
-                    <div className="flex-shrink-0">
-                        {user.profilePicture || profilePhotoPreview ? (
-                            <img
-                                src={user.profilePicture || profilePhotoPreview || ''}
-                                alt="Profile"
-                                className="w-24 h-24 rounded-full object-cover border-4 border-blue-500"
-                            />
-                        ) : (
-                            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-3xl font-bold border-4 border-blue-500">
-                                {(displayName || 'U')[0].toUpperCase()}
+        <div className="min-h-screen bg-gray-50 pb-12">
+            {/* Top Navigation / Header Area */}
+            <div className="bg-white border-b border-gray-200">
+                <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between py-6 gap-4">
+                        <div className="flex items-center gap-4">
+                            <div className="relative">
+                                {user.profilePicture ? (
+                                    <img
+                                        src={user.profilePicture}
+                                        alt="Profile"
+                                        className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-md ring-2 ring-blue-50"
+                                    />
+                                ) : (
+                                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xl font-bold border-2 border-white shadow-md">
+                                        {(displayName || 'U').charAt(0).toUpperCase()}
+                                    </div>
+                                )}
+                                <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
                             </div>
-                        )}
+                            <div>
+                                <h1 className="text-2xl font-bold text-gray-900 leading-tight">
+                                    Welcome back, {displayName.split(' ')[0]}!
+                                </h1>
+                                <p className="text-sm text-gray-500 flex items-center gap-2">
+                                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                                        user.userType?.includes('Client') ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
+                                    }`}>
+                                        {user.userType || 'User'}
+                                    </span>
+                                    <span className="text-gray-300">|</span>
+                                    <span>{user.email}</span>
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-3">
+                           {/* Action Buttons could go here */}
+                           {activeTab === 'profile' && !isEditing && (
+                                <button
+                                    onClick={() => setShowProfileCompletion(true)} // Or setIsEditing(true) depending on logic
+                                    className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                >
+                                    <PencilIcon className="-ml-1 mr-2 h-4 w-4 text-gray-500" />
+                                    Edit Profile
+                                </button>
+                           )}
+                        </div>
                     </div>
 
-                    {/* User Info */}
-                    <div className="flex-grow text-center sm:text-left">
-                        <h1 className="text-3xl font-bold text-gray-800">
-                            {profileDisplayName || displayName || 'User'}
-                        </h1>
-                        <p className="text-gray-600 text-lg mt-1">{user.email}</p>
-                        {user.userType && (
-                            <span className="inline-block mt-2 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
-                                {user.userType}
-                            </span>
-                        )}
-                        {user.isVerified && (
-                            <span className="inline-block mt-2 ml-2 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
-                                ✓ Verified
-                            </span>
-                        )}
+                    {/* Tabs */}
+                    <div className="flex overflow-x-auto space-x-8 mt-4 no-scrollbar">
+                        {[
+                            { id: 'profile', label: 'My Profile', icon: UserIcon }, // Assuming UserIcon exists locally or imported
+                            { id: 'jobs', label: 'Jobs & Requests', icon: BriefcaseIcon },
+                            { id: 'messages', label: 'Messages', icon: ChatBubbleLeftRightIcon, count: unreadMessageCount },
+                            { id: 'reviews', label: 'Reviews', icon: StarIcon }, // Only show for workers usually, or both
+                            { id: 'support', label: 'Help & Support', icon: LifebuoyIcon },
+                        ].map((tab) => (
+                             // Simple conditional to hide tabs if needed
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id as any)}
+                                className={`
+                                    whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors
+                                    ${activeTab === tab.id
+                                        ? 'border-blue-500 text-blue-600'
+                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                    }
+                                `}
+                            >
+                                <tab.icon className={`w-5 h-5 ${activeTab === tab.id ? 'text-blue-500' : 'text-gray-400'}`} />
+                                {tab.label}
+                                {tab.count ? (
+                                    <span className="ml-2 bg-red-100 text-red-600 py-0.5 px-2 rounded-full text-xs font-semibold">
+                                        {tab.count}
+                                    </span>
+                                ) : null}
+                            </button>
+                        ))}
                     </div>
                 </div>
             </div>
+
+            {/* Main Content Area */}
+            <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
 
             {/* Alert for incomplete profile */}
             {isProfileIncomplete && (
