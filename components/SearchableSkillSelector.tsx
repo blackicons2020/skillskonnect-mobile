@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { skillCategories } from '../constants/skillTypes';
+import { skillTree } from '../constants/skillTypes';
 
 interface SearchableSkillSelectorProps {
   selectedSkills: string[];
@@ -21,24 +21,22 @@ const XMarkIcon: React.FC<{ className?: string }> = ({ className }) => (
 export const SearchableSkillSelector: React.FC<SearchableSkillSelectorProps> = ({ selectedSkills, onChange }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Filter skills based on search term
-  const filteredCategories = useMemo(() => {
-    if (!searchTerm.trim()) return skillCategories;
+  // Filter the tree based on search term
+  const filteredTree = useMemo(() => {
+    if (!searchTerm.trim()) return skillTree;
+    const lower = searchTerm.toLowerCase();
 
-    const lowerTerm = searchTerm.toLowerCase();
-    const result: Record<string, string[]> = {};
-
-    Object.entries(skillCategories).forEach(([category, skills]) => {
-      const matchingSkills = skills.filter(skill => 
-        skill.toLowerCase().includes(lowerTerm)
-      );
-
-      if (matchingSkills.length > 0) {
-        result[category] = matchingSkills;
-      }
-    });
-
-    return result;
+    return skillTree
+      .map(cat => ({
+        ...cat,
+        subCategories: cat.subCategories
+          .map(sub => ({
+            ...sub,
+            skills: sub.skills.filter(skill => skill.toLowerCase().includes(lower))
+          }))
+          .filter(sub => sub.skills.length > 0)
+      }))
+      .filter(cat => cat.subCategories.length > 0);
   }, [searchTerm]);
 
   const toggleSkill = (skill: string) => {
@@ -53,97 +51,154 @@ export const SearchableSkillSelector: React.FC<SearchableSkillSelectorProps> = (
     onChange(selectedSkills.filter(s => s !== skill));
   };
 
+  const shouldShowSubCategoryLabel = (catName: string, subName: string) =>
+    catName !== subName;
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Search Input */}
       <div className="relative">
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <SearchIcon className="h-5 w-5 text-gray-400" />
+          <SearchIcon className="h-4 w-4 text-gray-400" />
         </div>
         <input
           type="text"
-          className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-          placeholder="Search for skills (e.g., Plumber, Chef, Developer)..."
+          className="block w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
+          placeholder="Search skills — e.g. Plumber, Chef, Developer..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
+        {searchTerm && (
+          <button
+            type="button"
+            onClick={() => setSearchTerm('')}
+            className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+          >
+            <XMarkIcon className="h-4 w-4" />
+          </button>
+        )}
       </div>
 
       {/* Selected Skills Tags */}
       {selectedSkills.length > 0 && (
-        <div className="flex flex-wrap gap-2 p-2 bg-gray-50 rounded-lg border border-gray-100">
-          <span className="text-xs font-medium text-gray-500 w-full mb-1">Selected Skills ({selectedSkills.length}):</span>
-          {selectedSkills.map(skill => (
-            <span 
-              key={skill} 
-              className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
-            >
-              {skill}
-              <button
-                type="button"
-                className="flex-shrink-0 ml-1.5 h-4 w-4 rounded-full inline-flex items-center justify-center text-blue-600 hover:bg-blue-200 hover:text-blue-500 focus:outline-none"
-                onClick={() => removeSkill(skill)}
-              >
-                <span className="sr-only">Remove {skill}</span>
-                <XMarkIcon className="h-3 w-3" />
-              </button>
+        <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-blue-700 uppercase tracking-wide">
+              Selected ({selectedSkills.length})
             </span>
-          ))}
-          <button 
-            onClick={() => onChange([])}
-            className="text-xs text-red-500 hover:text-red-700 underline ml-auto"
-          >
-            Clear all
-          </button>
+            <button
+              type="button"
+              onClick={() => onChange([])}
+              className="text-xs text-red-500 hover:text-red-700 font-medium transition-colors"
+            >
+              Clear all
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {selectedSkills.map(skill => (
+              <span
+                key={skill}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-white text-blue-800 border border-blue-200 shadow-sm"
+              >
+                {skill}
+                <button
+                  type="button"
+                  onClick={() => removeSkill(skill)}
+                  className="flex-shrink-0 text-blue-400 hover:text-blue-700 transition-colors"
+                >
+                  <XMarkIcon className="h-3 w-3" />
+                </button>
+              </span>
+            ))}
+          </div>
         </div>
       )}
 
-      {/* Skills List */}
-      <div className="border border-gray-200 rounded-lg max-h-80 overflow-y-auto bg-white shadow-sm">
-        {Object.keys(filteredCategories).length === 0 ? (
-          <div className="p-8 text-center text-gray-500">
-            No skills found matching "{searchTerm}"
-          </div>
-        ) : (
-          <div className="divide-y divide-gray-100">
-            {Object.entries(filteredCategories).map(([category, skills]) => (
-              <div key={category} className="p-4">
-                <h4 className="text-sm font-semibold text-gray-900 mb-3 sticky top-0 bg-white/95 backdrop-blur-sm py-1 -mt-1 -mx-1 px-1 z-10">
-                  {category}
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {skills.map(skill => (
-                    <label 
-                      key={skill} 
-                      className={`
-                        relative flex items-start py-2 px-3 rounded-md cursor-pointer transition-colors duration-200
-                        ${selectedSkills.includes(skill) ? 'bg-blue-50 border border-blue-200' : 'hover:bg-gray-50 border border-transparent'}
-                      `}
-                    >
-                      <div className="min-w-0 flex-1 text-sm">
-                        <div className={`font-medium ${selectedSkills.includes(skill) ? 'text-blue-900' : 'text-gray-700'}`}>
-                          {skill}
-                        </div>
-                      </div>
-                      <div className="ml-3 flex items-center h-5">
-                        <input
-                          type="checkbox"
-                          className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded"
-                          checked={selectedSkills.includes(skill)}
-                          onChange={() => toggleSkill(skill)}
-                        />
-                      </div>
-                    </label>
-                  ))}
+      {/* Skills Tree */}
+      <div className="border border-gray-200 rounded-xl overflow-hidden shadow-sm bg-white">
+        <div className="max-h-[360px] overflow-y-auto overscroll-contain">
+          {filteredTree.length === 0 ? (
+            <div className="py-12 text-center text-sm text-gray-500">
+              <SearchIcon className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+              No skills found for "<span className="font-medium">{searchTerm}</span>"
+            </div>
+          ) : (
+            filteredTree.map((cat, catIdx) => (
+              <div key={cat.name} className={catIdx > 0 ? 'border-t border-gray-200' : ''}>
+                {/* Top-level category header */}
+                <div className="sticky top-0 z-20 bg-gray-800 px-4 py-2 flex items-center justify-between">
+                  <span className="text-xs font-bold text-white uppercase tracking-wider">
+                    {cat.name}
+                  </span>
+                  {cat.subCategories.flatMap(s => s.skills).filter(sk => selectedSkills.includes(sk)).length > 0 && (
+                    <span className="bg-blue-500 text-white rounded-full px-2 py-0.5 text-xs font-semibold">
+                      {cat.subCategories.flatMap(s => s.skills).filter(sk => selectedSkills.includes(sk)).length} selected
+                    </span>
+                  )}
                 </div>
+
+                {/* Sub-categories */}
+                {cat.subCategories.map((sub, subIdx) => (
+                  <div key={sub.name} className={subIdx > 0 ? 'border-t border-gray-100' : ''}>
+                    {shouldShowSubCategoryLabel(cat.name, sub.name) && (
+                      <div className="sticky top-8 z-10 bg-gray-50 border-b border-gray-100 px-4 py-1.5">
+                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                          {sub.name}
+                        </span>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 p-3 gap-1">
+                      {sub.skills.map(skill => {
+                        const isSelected = selectedSkills.includes(skill);
+                        return (
+                          <label
+                            key={skill}
+                            className={`
+                              flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer
+                              transition-all duration-150 select-none
+                              ${isSelected
+                                ? 'bg-blue-600 text-white shadow-sm'
+                                : 'text-gray-700 hover:bg-gray-100'}
+                            `}
+                          >
+                            <span className="text-sm font-medium truncate pr-2">{skill}</span>
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => toggleSkill(skill)}
+                              className="sr-only"
+                            />
+                            <div className={`
+                              flex-shrink-0 w-4 h-4 rounded border-2 flex items-center justify-center transition-colors
+                              ${isSelected ? 'border-white bg-white' : 'border-gray-300 bg-white'}
+                            `}>
+                              {isSelected && (
+                                <svg className="w-2.5 h-2.5 text-blue-600" fill="currentColor" viewBox="0 0 12 12">
+                                  <path d="M3.707 5.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4a1 1 0 00-1.414-1.414L5 6.586 3.707 5.293z"/>
+                                </svg>
+                              )}
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
+            ))
+          )}
+        </div>
+
+        {/* Footer hint */}
+        <div className="border-t border-gray-100 bg-gray-50 px-4 py-2 flex items-center justify-between">
+          <span className="text-xs text-gray-400">
+            {filteredTree.flatMap(c => c.subCategories.flatMap(s => s.skills)).length} skills across {filteredTree.length} categories
+          </span>
+          {selectedSkills.length === 0 && (
+            <span className="text-xs text-gray-400 italic">Click any skill to select it</span>
+          )}
+        </div>
       </div>
-      <p className="text-xs text-gray-500 text-right">
-        Can't find your skill? Try searching for related terms.
-      </p>
     </div>
   );
 };
