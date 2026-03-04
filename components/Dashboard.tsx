@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { User, View, VerificationDocuments, Job } from 'types';
 import { PencilIcon, StarIcon, BriefcaseIcon, ChatBubbleLeftRightIcon, LifebuoyIcon, UserIcon } from './icons';
-import { CLEANING_SERVICES } from '../constants/services';
+import { SearchableSkillSelector } from './SearchableSkillSelector';
 import { CLIENT_LIMITS } from '../constants/subscriptions';
 import { ChatInterface } from './ChatInterface';
 import { apiService } from '../services/apiService';
@@ -713,40 +713,23 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onNavi
                                         <h3 className="text-lg font-medium text-gray-900 mt-6">Professional Details</h3>
 
                                         <ProfileField label="Skills Type" value={formData.services} isEditing={isEditing}>
-                                            <div className="w-full">
-                                                {isEditing && (
-                                                    <select
-                                                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm mb-2"
-                                                        onChange={(e) => {
-                                                            const service = e.target.value;
-                                                            if (service && !formData.services?.includes(service)) {
-                                                                setFormData((prev: any) => ({ ...prev, services: [...(prev.services || []), service] }));
-                                                            }
-                                                            e.target.value = "";
-                                                        }}
-                                                    >
-                                                        <option value="">-- Add a skill --</option>
-                                                        {CLEANING_SERVICES.filter(s => !formData.services?.includes(s)).map(service => (
-                                                            <option key={service} value={service}>{service}</option>
-                                                        ))}
-                                                    </select>
-                                                )}
+                                            {isEditing ? (
+                                                <div className="w-full">
+                                                    <SearchableSkillSelector
+                                                        selectedSkills={Array.isArray(formData.services) ? formData.services : []}
+                                                        onChange={(newSkills) => setFormData((prev: any) => ({ ...prev, services: newSkills }))}
+                                                        maxSkills={3}
+                                                    />
+                                                </div>
+                                            ) : (
                                                 <div className="flex flex-wrap gap-2">
                                                     {formData.services && formData.services.length > 0 ? formData.services.map((s: string) => (
-                                                        <span key={s} className="flex items-center bg-green-100 text-primary text-xs font-semibold px-2.5 py-1 rounded-full">
+                                                        <span key={s} className="inline-flex items-center bg-green-100 text-primary text-xs font-semibold px-2.5 py-1 rounded-full">
                                                             {s}
-                                                            {isEditing && (
-                                                                <button
-                                                                    onClick={() => setFormData((prev: any) => ({ ...prev, services: prev.services?.filter((service: string) => service !== s) }))}
-                                                                    className="ml-2 text-primary hover:text-red-500"
-                                                                >
-                                                                    &times;
-                                                                </button>
-                                                            )}
                                                         </span>
                                                     )) : <span className="text-sm text-gray-500">No skills selected</span>}
                                                 </div>
-                                            </div>
+                                            )}
                                         </ProfileField>
 
                                         <ProfileField label="Years of Experience" value={formData.experience ? `${formData.experience} years` : ''} isEditing={isEditing}>
