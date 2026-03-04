@@ -79,10 +79,10 @@ export const CleanerCard: React.FC<CleanerCardProps> = ({ cleaner, onClick }) =>
                         <span className="text-xs text-gray-500 ml-1">/hour</span>
                     </>
                 ) : (
-                    <span className="text-base font-semibold text-orange-600 italic">Price: Negotiable</span>
+                    <span className="text-base font-semibold text-primary">Amount: Not fixed</span>
                 )
             ) : (
-                <span className="text-base font-semibold text-orange-600 italic">Price: Negotiable</span>
+                <span className="text-base font-semibold text-primary">Amount: Not fixed</span>
             )}
         </div>
         <div className="mt-auto pt-4">
