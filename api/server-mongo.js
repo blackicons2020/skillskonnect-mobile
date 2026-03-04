@@ -2293,6 +2293,54 @@ app.get('/api/payment/verify/:reference', authenticateToken, async (req, res) =>
   }
 });
 
+// ==================== PAYMENT WEBHOOKS ====================
+
+// Paystack webhook — receives server-to-server payment notifications
+app.post('/api/payment/webhook', async (req, res) => {
+  try {
+    // Verify webhook signature
+    const crypto = require('crypto');
+    const hash = crypto.createHmac('sha512', process.env.PAYSTACK_SECRET_KEY || '')
+      .update(JSON.stringify(req.body))
+      .digest('hex');
+
+    if (hash !== req.headers['x-paystack-signature']) {
+      return res.status(401).json({ message: 'Invalid signature' });
+    }
+
+    const event = req.body;
+    if (event.event === 'charge.success') {
+      const data = event.data;
+      const plan = data.metadata?.plan;
+      const billingCycle = data.metadata?.billingCycle || 'monthly';
+      const userId = data.metadata?.userId;
+      const amount = data.amount / 100;
+
+      if (plan && userId) {
+        const subscriptionDate = new Date();
+        const durationMs = billingCycle === 'yearly'
+          ? 365 * 24 * 60 * 60 * 1000
+          : 30 * 24 * 60 * 60 * 1000;
+        const subscriptionEndDate = new Date(Date.now() + durationMs);
+
+        await User.findByIdAndUpdate(userId, {
+          subscriptionTier: plan,
+          subscriptionDate,
+          subscriptionEndDate,
+          subscriptionAmount: amount,
+          pendingSubscription: null
+        });
+        console.log(`Webhook: Subscription activated for user ${userId} — ${plan} (${billingCycle})`);
+      }
+    }
+
+    res.status(200).json({ received: true });
+  } catch (error) {
+    console.error('Webhook error:', error);
+    res.status(200).json({ received: true }); // Always return 200 so Paystack doesn't retry
+  }
+});
+
 // ==================== HEALTH CHECK ====================
 
 app.get('/api/health', (req, res) => {
