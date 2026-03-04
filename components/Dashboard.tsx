@@ -1131,6 +1131,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onNavi
                     onUpload={handleVerificationUpload}
                 />
             )}
+            </div>
         </div>
     );
 };
