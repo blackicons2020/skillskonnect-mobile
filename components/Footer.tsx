@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { FacebookIcon, InstagramIcon, SparklesIcon, YouTubeIcon, TikTokIcon, XIcon } from './icons';
+import { FacebookIcon, InstagramIcon, YouTubeIcon, TikTokIcon, XIcon } from './icons';
 import { View } from '../types';
 
 interface FooterProps {
@@ -28,9 +28,8 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
             <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
                     <div className="col-span-2 md:col-span-2">
-                         <div className="flex items-center gap-2 text-2xl font-bold text-primary">
-                            <SparklesIcon className="w-8 h-8" />
-                            <span>Skills Konnect</span>
+                         <div className="flex items-center gap-2">
+                            <img src="/logo.png" alt="Clean Connect" className="h-10 w-auto" />
                         </div>
                         <p className="mt-2 text-gray-500 max-w-xs">
                             Connecting with trusted, skilled professionals for every service need, every time.
@@ -75,7 +74,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                 </div>
 
                 <div className="mt-12 border-t pt-8 flex flex-col sm:flex-row justify-between items-center">
-                    <p className="text-sm text-gray-500">&copy; {new Date().getFullYear()} Skills Konnect. All rights reserved.</p>
+                    <p className="text-sm text-gray-500">&copy; {new Date().getFullYear()} Clean Connect. All rights reserved.</p>
                     <div className="flex space-x-6 mt-4 sm:mt-0">
                        <a href="https://www.facebook.com/profile.php?id=61582798031435" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-primary transition-colors">
                            <span className="sr-only">Facebook</span>
