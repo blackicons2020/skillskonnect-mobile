@@ -7,7 +7,7 @@ import { GoogleIcon, AppleIcon, EyeIcon, EyeSlashIcon } from './icons';
 interface AuthProps {
     initialTab: 'login' | 'signup';
     onNavigate: (v: View) => void;
-    onLoginAttempt: (email: string, password?: string, rememberMe?: boolean) => void;
+    onLoginAttempt: (email: string, password?: string, rememberMe?: boolean) => Promise<void>;
     onSignup: (email: string, password: string, userType: 'client' | 'worker') => Promise<void>;
     authMessage: { type: 'success' | 'error', text: string } | null;
     onAuthMessageDismiss: () => void;
@@ -20,16 +20,27 @@ interface LoginTabProps {
     setPassword: (password: string) => void;
     rememberMe: boolean;
     setRememberMe: (v: boolean) => void;
-    handleLogin: () => void;
+    handleLogin: () => Promise<void>;
     onSocialClick: (provider: 'google' | 'apple') => void;
     onForgotPasswordClick: () => void;
 }
 
 const LoginTab: React.FC<LoginTabProps> = ({ email, setEmail, password, setPassword, rememberMe, setRememberMe, handleLogin, onSocialClick, onForgotPasswordClick }) => {
     const [showPassword, setShowPassword] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+
+    const onSubmit = async () => {
+        setIsLoading(true);
+        try {
+            await handleLogin();
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     return (
         <div>
-            <form onSubmit={(e) => { e.preventDefault(); handleLogin(); }}>
+            <form onSubmit={(e) => { e.preventDefault(); onSubmit(); }}>
                 <div className="space-y-4">
                     <div>
                         <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email address</label>
@@ -88,8 +99,13 @@ const LoginTab: React.FC<LoginTabProps> = ({ email, setEmail, password, setPassw
                         </div>
                     </div>
                     <div>
-                        <button type="submit" className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
-                            Sign in
+                        <button type="submit" disabled={isLoading} className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed">
+                            {isLoading ? (
+                                <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                </svg>
+                            ) : 'Sign in'}
                         </button>
                     </div>
                 </div>
@@ -335,8 +351,8 @@ export const Auth: React.FC<AuthProps> = ({ initialTab, onNavigate, onLoginAttem
         }
     }, [authMessage, onAuthMessageDismiss]);
 
-    const handleLogin = () => {
-        onLoginAttempt(email.trim(), password.trim(), rememberMe);
+    const handleLogin = async () => {
+        await onLoginAttempt(email.trim(), password.trim(), rememberMe);
     };
 
     const handleTabChange = (tab: 'login' | 'signup') => {

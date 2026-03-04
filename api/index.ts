@@ -126,7 +126,7 @@ const admin: RequestHandler = (req, res, next) => {
 // ROUTES: AUTH
 // ============================================================================
 app.post('/api/auth/register', async (req: ExpressRequest, res: ExpressResponse) => {
-  const { email, password, role, fullName, phoneNumber, state, city, otherCity, address, clientType, cleanerType, companyName, companyAddress, experience, services, bio, chargeHourly, chargeDaily, chargePerContract, chargePerContractNegotiable, bankName, accountNumber, profilePhoto, governmentId, businessRegDoc, gender } = req.body;
+  const { email, password, role, userType, fullName, phoneNumber, state, city, otherCity, address, clientType, cleanerType, companyName, companyAddress, experience, services, bio, chargeHourly, chargeDaily, chargePerContract, chargePerContractNegotiable, bankName, accountNumber, profilePhoto, governmentId, businessRegDoc, gender } = req.body;
 
   try {
     const userExists = await User.findOne({ email });
@@ -135,8 +135,9 @@ app.post('/api/auth/register', async (req: ExpressRequest, res: ExpressResponse)
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Use provided values or defaults for minimal signup
-    const userRole = role || 'client';
+    // Map userType ('worker'→'cleaner') if role is not provided
+    const mappedRole = role || (userType === 'worker' ? 'cleaner' : userType) || 'client';
+    const userRole = mappedRole;
     const userName = fullName || '';
     const userPhone = phoneNumber || '';
     const userState = state || '';
@@ -180,6 +181,7 @@ app.post('/api/auth/register', async (req: ExpressRequest, res: ExpressResponse)
       fullName: user.fullName,
       email: user.email,
       role: user.role,
+      userType: user.role === 'cleaner' ? 'worker' : 'client',
       phoneNumber: user.phoneNumber,
       gender: user.gender,
       address: user.address,
@@ -209,8 +211,8 @@ app.post('/api/auth/register', async (req: ExpressRequest, res: ExpressResponse)
     };
 
     res.status(201).json({
-      ...userData,
-      token: generateToken(user._id.toString(), user.role, user.isAdmin, user.adminRole)
+      token: generateToken(user._id.toString(), user.role, user.isAdmin, user.adminRole),
+      user: userData
     });
   } catch (error) { handleError(res, error, 'Registration failed'); }
 });
@@ -247,6 +249,7 @@ app.post('/api/auth/login', async (req: ExpressRequest, res: ExpressResponse) =>
       fullName: user.fullName,
       email: user.email,
       role: user.role,
+      userType: user.role === 'cleaner' ? 'worker' : 'client',
       phoneNumber: user.phoneNumber,
       gender: user.gender,
       address: user.address,

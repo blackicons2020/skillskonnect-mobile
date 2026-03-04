@@ -392,12 +392,14 @@ const App: React.FC = () => {
         setAuthMessage(null);
         loginInProgressRef.current = true;
         try {
-            // Register with minimal data - email, password, and userType
+            // Register with minimal data - email, password, userType, and role (backend expects 'role')
+            const role = userType === 'worker' ? 'cleaner' : 'client';
             const response: any = await apiService.register({
                 email,
                 password,
-                userType
-            });
+                userType,
+                role
+            } as any);
 
             if (response.token && response.user) {
                 storeToken(response.token, false); // New registrations: session only until next explicit login
@@ -412,6 +414,9 @@ const App: React.FC = () => {
                 } else {
                     handleNavigate('clientDashboard');
                 }
+            } else {
+                // Response received but unexpected format
+                setAuthMessage({ type: 'error', text: 'Signup succeeded but an unexpected response was received. Please try logging in.' });
             }
         } catch (err: any) {
             setAuthMessage({ type: 'error', text: err.message || 'Signup failed. Please try again.' });
