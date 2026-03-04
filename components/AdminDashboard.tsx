@@ -165,17 +165,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: currentUse
     const totalClients = useMemo(() => allUsers ? allUsers.filter(u => u.role === 'client' && !u.isAdmin).length : 0, [allUsers]);
     const totalCleaners = useMemo(() => allUsers ? allUsers.filter(u => u.role === 'cleaner' && !u.isAdmin).length : 0, [allUsers]);
 
-    const [subscriptionFilter, setSubscriptionFilter] = useState<'all' | 'pending' | 'active'>('all');
+    const [subscriptionFilter, setSubscriptionFilter] = useState<'all' | 'active' | 'expired'>('all');
 
-    // All workers who have a subscription tier (active or pending)
+    // All workers who have a subscription tier
     const subscriptionPayments = useMemo(() => {
         if (!allUsers) return [];
-        const workers = allUsers.filter(u => u.role === 'cleaner' && !u.isAdmin);
+        const workers = allUsers.filter(u => u.role === 'cleaner' && !u.isAdmin && u.subscriptionTier && u.subscriptionTier !== 'Free');
+        const now = new Date();
         if (subscriptionFilter === 'active') {
-            return workers.filter(u => u.subscriptionTier && u.subscriptionTier !== 'Free');
+            return workers.filter(u => !u.subscriptionEndDate || new Date(u.subscriptionEndDate) > now);
         }
-        // 'all' — show everyone with a paid subscription
-        return workers.filter(u => u.subscriptionTier && u.subscriptionTier !== 'Free');
+        if (subscriptionFilter === 'expired') {
+            return workers.filter(u => u.subscriptionEndDate && new Date(u.subscriptionEndDate) <= now);
+        }
+        return workers;
     }, [allUsers, subscriptionFilter]);
 
     // Permissions Helper
@@ -460,8 +463,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: currentUse
                             <h3 className="text-xl font-semibold">Subscription Payments</h3>
                             <div className="flex items-center gap-2 rounded-lg bg-gray-100 p-1">
                                 <button onClick={() => setSubscriptionFilter('all')} className={`px-3 py-1 text-sm font-medium rounded-md ${subscriptionFilter === 'all' ? 'bg-white shadow' : 'text-gray-600'}`}>All</button>
-                                <button onClick={() => setSubscriptionFilter('pending')} className={`px-3 py-1 text-sm font-medium rounded-md ${subscriptionFilter === 'pending' ? 'bg-white shadow' : 'text-gray-600'}`}>Pending Approval</button>
                                 <button onClick={() => setSubscriptionFilter('active')} className={`px-3 py-1 text-sm font-medium rounded-md ${subscriptionFilter === 'active' ? 'bg-white shadow' : 'text-gray-600'}`}>Active</button>
+                                <button onClick={() => setSubscriptionFilter('expired')} className={`px-3 py-1 text-sm font-medium rounded-md ${subscriptionFilter === 'expired' ? 'bg-white shadow' : 'text-gray-600'}`}>Expired</button>
                             </div>
                         </div>
                         <div className="overflow-x-auto">
@@ -506,7 +509,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: currentUse
                                                 }
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                                <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-green-100 text-green-800">Active</span>
+                                                {(() => {
+                                                    if (!user.subscriptionEndDate) return <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-green-100 text-green-800">Active</span>;
+                                                    const isExpired = new Date(user.subscriptionEndDate) <= new Date();
+                                                    return isExpired
+                                                        ? <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-red-100 text-red-800">Expired</span>
+                                                        : <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-green-100 text-green-800">Active</span>;
+                                                })()}
                                             </td>
                                         </tr>
                                     ))}

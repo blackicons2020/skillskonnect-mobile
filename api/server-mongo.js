@@ -101,10 +101,9 @@ const UserSchema = new mongoose.Schema({
   // Subscription
   subscriptionTier: String,
   pendingSubscription: String,
-  subscriptionReceipt: mongoose.Schema.Types.Mixed,
   subscriptionEndDate: String,
-  trialStartDate: String,
-  trialEndDate: String,
+  subscriptionDate: Date,
+  subscriptionAmount: Number,
   
   // Bookings & Jobs
   bookingHistory: [mongoose.Schema.Types.Mixed],
