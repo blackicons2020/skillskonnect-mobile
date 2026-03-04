@@ -2077,9 +2077,10 @@ app.get('/api/admin/users', authenticateToken, async (req, res) => {
 
 // ==================== PAYMENT GATEWAY ENDPOINTS (Paystack & Flutterwave) ====================
 
+// ── Paystack initialize ────────────────────────────────────────────────────────────────────
 app.post('/api/payment/initialize', authenticateToken, async (req, res) => {
   try {
-    const { email, amount, plan, billingCycle } = req.body;
+    const { email, amount, currency = 'NGN', plan, billingCycle } = req.body;
     const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
 
     if (!PAYSTACK_SECRET_KEY) {
@@ -2101,14 +2102,11 @@ app.post('/api/payment/initialize', authenticateToken, async (req, res) => {
       },
       body: JSON.stringify({
         email,
-        amount: amount * 100, // Paystack expects amount in kobo (NGN cents)
+        amount: Math.round(amount * 100), // Paystack expects the smallest currency unit (kobo, pesewa, cents…)
+        currency: currency.toUpperCase(),  // Pass local currency so Paystack charges in the right currency
         reference,
-        callback_url: req.body.callback_url || `${req.headers.origin || 'https://skillskonnect.online'}/payment/callback`,
-        metadata: {
-          plan,
-          billingCycle,
-          userId
-        }
+        callback_url: req.body.callback_url || `${req.headers.origin || 'https://skillskonnect.online'}/payment/verify`,
+        metadata: { plan, billingCycle, userId }
       })
     });
 
@@ -2131,6 +2129,107 @@ app.post('/api/payment/initialize', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Payment initialization error:', error);
     res.status(500).json({ message: error.message || 'Payment initialization failed' });
+  }
+});
+
+// ── Flutterwave initialize ─────────────────────────────────────────────────────────────────
+app.post('/api/payment/initialize-flutterwave', authenticateToken, async (req, res) => {
+  try {
+    const { email, amount, currency = 'USD', reference, redirect_url, customer, plan, billingCycle, customizations } = req.body;
+    const FLW_SECRET_KEY = process.env.FLUTTERWAVE_SECRET_KEY;
+
+    if (!FLW_SECRET_KEY) {
+      return res.status(500).json({ message: 'Flutterwave not configured. Please add FLUTTERWAVE_SECRET_KEY to environment variables.' });
+    }
+
+    const user = await User.findOne({ email: req.user.email });
+    const userId = user ? user._id.toString() : null;
+
+    const flwResponse = await fetch('https://api.flutterwave.com/v3/payments', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${FLW_SECRET_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        tx_ref: reference || `SUB_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+        amount,
+        currency: currency.toUpperCase(),
+        redirect_url: redirect_url || `${req.headers.origin || 'https://skillskonnect.online'}/payment/verify`,
+        customer: { email: customer?.email || email, name: customer?.name || 'Customer' },
+        customizations: customizations || {
+          title: 'SkillsKonnect Subscription',
+          description: `${plan || 'Subscription'} — ${billingCycle || 'monthly'} billing`
+        },
+        meta: { plan, billingCycle, userId }
+      })
+    });
+
+    const flwData = await flwResponse.json();
+
+    if (flwData.status !== 'success') {
+      return res.status(400).json({ message: flwData.message || 'Flutterwave initialization failed' });
+    }
+
+    // Store pending subscription
+    if (userId && plan) {
+      await User.findByIdAndUpdate(userId, { pendingSubscription: plan });
+    }
+
+    res.json({ payment_link: flwData.data.link });
+  } catch (error) {
+    console.error('Flutterwave initialization error:', error);
+    res.status(500).json({ message: error.message || 'Flutterwave initialization failed' });
+  }
+});
+
+// ── Flutterwave verify ─────────────────────────────────────────────────────────────────────
+app.get('/api/payment/verify-flutterwave/:transactionId', authenticateToken, async (req, res) => {
+  try {
+    const { transactionId } = req.params;
+    const { tx_ref } = req.query;
+    const FLW_SECRET_KEY = process.env.FLUTTERWAVE_SECRET_KEY;
+
+    if (!FLW_SECRET_KEY) {
+      return res.status(500).json({ message: 'Flutterwave not configured' });
+    }
+
+    const flwResponse = await fetch(`https://api.flutterwave.com/v3/transactions/${transactionId}/verify`, {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${FLW_SECRET_KEY}` }
+    });
+
+    const flwData = await flwResponse.json();
+
+    if (flwData.status === 'success' && flwData.data?.status === 'successful') {
+      const plan = flwData.data.meta?.plan;
+      const billingCycle = flwData.data.meta?.billingCycle || 'monthly';
+      const userId = flwData.data.meta?.userId;
+      const amount = flwData.data.amount;
+
+      if (plan && userId) {
+        const subscriptionDate = new Date();
+        const durationMs = billingCycle === 'yearly'
+          ? 365 * 24 * 60 * 60 * 1000
+          : 30 * 24 * 60 * 60 * 1000;
+        const subscriptionEndDate = new Date(Date.now() + durationMs);
+
+        await User.findByIdAndUpdate(userId, {
+          subscriptionTier: plan,
+          subscriptionDate,
+          subscriptionEndDate,
+          subscriptionAmount: amount,
+          pendingSubscription: null
+        });
+      }
+
+      res.json({ success: true, message: 'Payment verified and subscription activated' });
+    } else {
+      res.json({ success: false, message: flwData.data?.status || 'Payment not successful' });
+    }
+  } catch (error) {
+    console.error('Flutterwave verification error:', error);
+    res.status(500).json({ message: error.message || 'Flutterwave verification failed' });
   }
 });
 

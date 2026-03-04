@@ -385,10 +385,250 @@ export type PricingModel = 'hourly' | 'daily' | 'negotiable';
  * Returns the dominant pricing convention for a country.
  *   'hourly'     → show chargeHourly on cards; form shows hourly field
  *   'daily'      → hide per-hour; form shows daily field + negotiable toggle
- *   'negotiable' → always show "Price: Negotiable" on cards; form shows negotiable only
+ *   'negotiable' → always show "Amount: Not fixed" on cards; form shows negotiable only
  */
 export function getPricingModel(countryName: string): PricingModel {
   if (HOURLY_PRICING_COUNTRIES.has(countryName)) return 'hourly';
   if (DAILY_PRICING_COUNTRIES.has(countryName)) return 'daily';
   return 'negotiable';
+}
+
+// ─── Country Currency Data ────────────────────────────────────────────────────
+
+export interface CountryCurrency {
+  /** ISO 4217 currency code e.g. 'NGN', 'USD', 'GBP' */
+  code: string;
+  /** Display symbol e.g. '₦', '$', '£' */
+  symbol: string;
+  /**
+   * Approximate rate: 1 USD = this many local currency units.
+   * Used for display conversion only — actual settlement is handled by the gateway.
+   */
+  usdRate: number;
+}
+
+/** Map of country name → currency. Defaults to USD for unknown countries. */
+export const COUNTRY_CURRENCY: Record<string, CountryCurrency> = {
+  // ── Africa ──
+  'Nigeria':                  { code: 'NGN',  symbol: '₦',     usdRate: 1600   },
+  'Ghana':                    { code: 'GHS',  symbol: 'GH₵',   usdRate: 15     },
+  'South Africa':             { code: 'ZAR',  symbol: 'R',     usdRate: 19     },
+  'Kenya':                    { code: 'KES',  symbol: 'KSh',   usdRate: 130    },
+  'Egypt':                    { code: 'EGP',  symbol: 'E£',    usdRate: 49     },
+  'Rwanda':                   { code: 'RWF',  symbol: 'RF',    usdRate: 1350   },
+  'Tanzania':                 { code: 'TZS',  symbol: 'TSh',   usdRate: 2600   },
+  'Uganda':                   { code: 'UGX',  symbol: 'USh',   usdRate: 3750   },
+  'Zambia':                   { code: 'ZMW',  symbol: 'ZK',    usdRate: 27     },
+  'Mozambique':               { code: 'MZN',  symbol: 'MT',    usdRate: 64     },
+  'Ethiopia':                 { code: 'ETB',  symbol: 'Br',    usdRate: 123    },
+  'Ivory Coast':              { code: 'XOF',  symbol: 'CFA',   usdRate: 605    },
+  'Senegal':                  { code: 'XOF',  symbol: 'CFA',   usdRate: 605    },
+  'Cameroon':                 { code: 'XAF',  symbol: 'FCFA',  usdRate: 605    },
+  'Mali':                     { code: 'XOF',  symbol: 'CFA',   usdRate: 605    },
+  'Burkina Faso':             { code: 'XOF',  symbol: 'CFA',   usdRate: 605    },
+  'Niger':                    { code: 'XOF',  symbol: 'CFA',   usdRate: 605    },
+  'Togo':                     { code: 'XOF',  symbol: 'CFA',   usdRate: 605    },
+  'Benin':                    { code: 'XOF',  symbol: 'CFA',   usdRate: 605    },
+  'Guinea-Bissau':            { code: 'XOF',  symbol: 'CFA',   usdRate: 605    },
+  'Guinea':                   { code: 'GNF',  symbol: 'FG',    usdRate: 8600   },
+  'Chad':                     { code: 'XAF',  symbol: 'FCFA',  usdRate: 605    },
+  'Gabon':                    { code: 'XAF',  symbol: 'FCFA',  usdRate: 605    },
+  'Congo (Republic)':         { code: 'XAF',  symbol: 'FCFA',  usdRate: 605    },
+  'Equatorial Guinea':        { code: 'XAF',  symbol: 'FCFA',  usdRate: 605    },
+  'Central African Republic': { code: 'XAF',  symbol: 'FCFA',  usdRate: 605    },
+  'Congo (DRC)':              { code: 'CDF',  symbol: 'FC',    usdRate: 2800   },
+  'Angola':                   { code: 'AOA',  symbol: 'Kz',    usdRate: 880    },
+  'Namibia':                  { code: 'NAD',  symbol: 'N$',    usdRate: 19     },
+  'Botswana':                 { code: 'BWP',  symbol: 'P',     usdRate: 14     },
+  'Zimbabwe':                 { code: 'USD',  symbol: '$',     usdRate: 1      },
+  'Malawi':                   { code: 'MWK',  symbol: 'MK',    usdRate: 1750   },
+  'Madagascar':               { code: 'MGA',  symbol: 'Ar',    usdRate: 4500   },
+  'Mauritius':                { code: 'MUR',  symbol: '₨',     usdRate: 46     },
+  'Seychelles':               { code: 'SCR',  symbol: '₨',     usdRate: 14     },
+  'Morocco':                  { code: 'MAD',  symbol: 'DH',    usdRate: 10     },
+  'Algeria':                  { code: 'DZD',  symbol: 'DA',    usdRate: 135    },
+  'Tunisia':                  { code: 'TND',  symbol: 'DT',    usdRate: 3.1    },
+  'Libya':                    { code: 'LYD',  symbol: 'LD',    usdRate: 4.9    },
+  'Sudan':                    { code: 'SDG',  symbol: 'SDG',   usdRate: 600    },
+  'South Sudan':              { code: 'SSP',  symbol: 'SSP',   usdRate: 1300   },
+  'Somalia':                  { code: 'SOS',  symbol: 'Sh',    usdRate: 571    },
+  'Gambia':                   { code: 'GMD',  symbol: 'D',     usdRate: 71     },
+  'Sierra Leone':             { code: 'SLE',  symbol: 'Le',    usdRate: 22     },
+  'Liberia':                  { code: 'LRD',  symbol: 'L$',    usdRate: 191    },
+  'Cape Verde':               { code: 'CVE',  symbol: 'Esc',   usdRate: 100    },
+  'Djibouti':                 { code: 'DJF',  symbol: 'Fdj',   usdRate: 178    },
+  'Eritrea':                  { code: 'ERN',  symbol: 'Nfk',   usdRate: 15     },
+  'Comoros':                  { code: 'KMF',  symbol: 'CF',    usdRate: 450    },
+  'Sao Tome and Principe':    { code: 'STN',  symbol: 'Db',    usdRate: 22     },
+  'Eswatini':                 { code: 'SZL',  symbol: 'L',     usdRate: 19     },
+  'Lesotho':                  { code: 'LSL',  symbol: 'L',     usdRate: 19     },
+  'Burundi':                  { code: 'BIF',  symbol: 'Fr',    usdRate: 2900   },
+  // ── Americas ──
+  'United States':            { code: 'USD',  symbol: '$',     usdRate: 1      },
+  'Canada':                   { code: 'CAD',  symbol: 'CA$',   usdRate: 1.36   },
+  'Mexico':                   { code: 'MXN',  symbol: 'MX$',   usdRate: 17     },
+  'Brazil':                   { code: 'BRL',  symbol: 'R$',    usdRate: 5.1    },
+  'Argentina':                { code: 'ARS',  symbol: 'AR$',   usdRate: 950    },
+  'Colombia':                 { code: 'COP',  symbol: 'CO$',   usdRate: 3900   },
+  'Chile':                    { code: 'CLP',  symbol: 'CL$',   usdRate: 930    },
+  'Peru':                     { code: 'PEN',  symbol: 'S/',    usdRate: 3.8    },
+  'Venezuela':                { code: 'VES',  symbol: 'Bs.',   usdRate: 36     },
+  'Ecuador':                  { code: 'USD',  symbol: '$',     usdRate: 1      },
+  'Bolivia':                  { code: 'BOB',  symbol: 'Bs',    usdRate: 6.9    },
+  'Paraguay':                 { code: 'PYG',  symbol: '₲',     usdRate: 7300   },
+  'Uruguay':                  { code: 'UYU',  symbol: '$U',    usdRate: 39     },
+  'Guyana':                   { code: 'GYD',  symbol: 'G$',    usdRate: 209    },
+  'Suriname':                 { code: 'SRD',  symbol: 'Sr$',   usdRate: 33     },
+  'Jamaica':                  { code: 'JMD',  symbol: 'J$',    usdRate: 157    },
+  'Trinidad and Tobago':      { code: 'TTD',  symbol: 'TT$',   usdRate: 6.8    },
+  'Cuba':                     { code: 'CUP',  symbol: '$',     usdRate: 24     },
+  'Dominican Republic':       { code: 'DOP',  symbol: 'RD$',   usdRate: 59     },
+  'Haiti':                    { code: 'HTG',  symbol: 'G',     usdRate: 131    },
+  'Guatemala':                { code: 'GTQ',  symbol: 'Q',     usdRate: 7.8    },
+  'Honduras':                 { code: 'HNL',  symbol: 'L',     usdRate: 25     },
+  'El Salvador':              { code: 'USD',  symbol: '$',     usdRate: 1      },
+  'Nicaragua':                { code: 'NIO',  symbol: 'C$',    usdRate: 37     },
+  'Costa Rica':               { code: 'CRC',  symbol: '₡',     usdRate: 520    },
+  'Panama':                   { code: 'USD',  symbol: '$',     usdRate: 1      },
+  // ── Europe ──
+  'United Kingdom':           { code: 'GBP',  symbol: '£',     usdRate: 0.79   },
+  'Germany':                  { code: 'EUR',  symbol: '€',     usdRate: 0.92   },
+  'France':                   { code: 'EUR',  symbol: '€',     usdRate: 0.92   },
+  'Italy':                    { code: 'EUR',  symbol: '€',     usdRate: 0.92   },
+  'Spain':                    { code: 'EUR',  symbol: '€',     usdRate: 0.92   },
+  'Netherlands':              { code: 'EUR',  symbol: '€',     usdRate: 0.92   },
+  'Belgium':                  { code: 'EUR',  symbol: '€',     usdRate: 0.92   },
+  'Switzerland':              { code: 'CHF',  symbol: 'CHF',   usdRate: 0.9    },
+  'Austria':                  { code: 'EUR',  symbol: '€',     usdRate: 0.92   },
+  'Sweden':                   { code: 'SEK',  symbol: 'kr',    usdRate: 10.5   },
+  'Norway':                   { code: 'NOK',  symbol: 'kr',    usdRate: 10.6   },
+  'Denmark':                  { code: 'DKK',  symbol: 'kr',    usdRate: 6.9    },
+  'Finland':                  { code: 'EUR',  symbol: '€',     usdRate: 0.92   },
+  'Iceland':                  { code: 'ISK',  symbol: 'kr',    usdRate: 139    },
+  'Ireland':                  { code: 'EUR',  symbol: '€',     usdRate: 0.92   },
+  'Luxembourg':               { code: 'EUR',  symbol: '€',     usdRate: 0.92   },
+  'Portugal':                 { code: 'EUR',  symbol: '€',     usdRate: 0.92   },
+  'Greece':                   { code: 'EUR',  symbol: '€',     usdRate: 0.92   },
+  'Malta':                    { code: 'EUR',  symbol: '€',     usdRate: 0.92   },
+  'Cyprus':                   { code: 'EUR',  symbol: '€',     usdRate: 0.92   },
+  'Poland':                   { code: 'PLN',  symbol: 'zł',    usdRate: 4.0    },
+  'Czech Republic':           { code: 'CZK',  symbol: 'Kč',    usdRate: 23     },
+  'Hungary':                  { code: 'HUF',  symbol: 'Ft',    usdRate: 360    },
+  'Romania':                  { code: 'RON',  symbol: 'lei',   usdRate: 4.6    },
+  'Bulgaria':                 { code: 'BGN',  symbol: 'лв',    usdRate: 1.8    },
+  'Croatia':                  { code: 'EUR',  symbol: '€',     usdRate: 0.92   },
+  'Slovakia':                 { code: 'EUR',  symbol: '€',     usdRate: 0.92   },
+  'Slovenia':                 { code: 'EUR',  symbol: '€',     usdRate: 0.92   },
+  'Estonia':                  { code: 'EUR',  symbol: '€',     usdRate: 0.92   },
+  'Latvia':                   { code: 'EUR',  symbol: '€',     usdRate: 0.92   },
+  'Lithuania':                { code: 'EUR',  symbol: '€',     usdRate: 0.92   },
+  'Russia':                   { code: 'RUB',  symbol: '₽',     usdRate: 90     },
+  'Ukraine':                  { code: 'UAH',  symbol: '₴',     usdRate: 40     },
+  'Turkey':                   { code: 'TRY',  symbol: '₺',     usdRate: 33     },
+  'Serbia':                   { code: 'RSD',  symbol: 'din',   usdRate: 108    },
+  'Bosnia and Herzegovina':   { code: 'BAM',  symbol: 'KM',    usdRate: 1.8    },
+  'North Macedonia':          { code: 'MKD',  symbol: 'ден',   usdRate: 57     },
+  'Montenegro':               { code: 'EUR',  symbol: '€',     usdRate: 0.92   },
+  'Albania':                  { code: 'ALL',  symbol: 'L',     usdRate: 97     },
+  'Kosovo':                   { code: 'EUR',  symbol: '€',     usdRate: 0.92   },
+  'Moldova':                  { code: 'MDL',  symbol: 'L',     usdRate: 18     },
+  'Belarus':                  { code: 'BYN',  symbol: 'Br',    usdRate: 3.3    },
+  'Georgia':                  { code: 'GEL',  symbol: '₾',     usdRate: 2.7    },
+  'Armenia':                  { code: 'AMD',  symbol: '֏',     usdRate: 400    },
+  'Azerbaijan':               { code: 'AZN',  symbol: '₼',     usdRate: 1.7    },
+  'Liechtenstein':            { code: 'CHF',  symbol: 'CHF',   usdRate: 0.9    },
+  'Monaco':                   { code: 'EUR',  symbol: '€',     usdRate: 0.92   },
+  'Andorra':                  { code: 'EUR',  symbol: '€',     usdRate: 0.92   },
+  'San Marino':               { code: 'EUR',  symbol: '€',     usdRate: 0.92   },
+  'Vatican City':             { code: 'EUR',  symbol: '€',     usdRate: 0.92   },
+  // ── Asia ──
+  'Japan':                    { code: 'JPY',  symbol: '¥',     usdRate: 150    },
+  'China':                    { code: 'CNY',  symbol: '¥',     usdRate: 7.2    },
+  'India':                    { code: 'INR',  symbol: '₹',     usdRate: 84     },
+  'South Korea':              { code: 'KRW',  symbol: '₩',     usdRate: 1340   },
+  'Indonesia':                { code: 'IDR',  symbol: 'Rp',    usdRate: 15700  },
+  'Malaysia':                 { code: 'MYR',  symbol: 'RM',    usdRate: 4.7    },
+  'Philippines':              { code: 'PHP',  symbol: '₱',     usdRate: 58     },
+  'Thailand':                 { code: 'THB',  symbol: '฿',     usdRate: 36     },
+  'Vietnam':                  { code: 'VND',  symbol: '₫',     usdRate: 25000  },
+  'Bangladesh':               { code: 'BDT',  symbol: '৳',     usdRate: 110    },
+  'Pakistan':                 { code: 'PKR',  symbol: '₨',     usdRate: 280    },
+  'Sri Lanka':                { code: 'LKR',  symbol: 'Rs',    usdRate: 320    },
+  'Nepal':                    { code: 'NPR',  symbol: 'Rs',    usdRate: 134    },
+  'Myanmar':                  { code: 'MMK',  symbol: 'K',     usdRate: 2100   },
+  'Cambodia':                 { code: 'KHR',  symbol: '₭',     usdRate: 4100   },
+  'Laos':                     { code: 'LAK',  symbol: '₭',     usdRate: 21000  },
+  'Singapore':                { code: 'SGD',  symbol: 'S$',    usdRate: 1.34   },
+  'Taiwan':                   { code: 'TWD',  symbol: 'NT$',   usdRate: 32     },
+  'Brunei':                   { code: 'BND',  symbol: 'B$',    usdRate: 1.34   },
+  'Mongolia':                 { code: 'MNT',  symbol: '₮',     usdRate: 3400   },
+  'Timor-Leste':              { code: 'USD',  symbol: '$',     usdRate: 1      },
+  'Saudi Arabia':             { code: 'SAR',  symbol: 'SR',    usdRate: 3.75   },
+  'United Arab Emirates':     { code: 'AED',  symbol: 'AED',   usdRate: 3.67   },
+  'Qatar':                    { code: 'QAR',  symbol: 'QR',    usdRate: 3.64   },
+  'Kuwait':                   { code: 'KWD',  symbol: 'KD',    usdRate: 0.31   },
+  'Bahrain':                  { code: 'BHD',  symbol: 'BD',    usdRate: 0.38   },
+  'Oman':                     { code: 'OMR',  symbol: 'OMR',   usdRate: 0.38   },
+  'Jordan':                   { code: 'JOD',  symbol: 'JD',    usdRate: 0.71   },
+  'Lebanon':                  { code: 'USD',  symbol: '$',     usdRate: 1      },
+  'Israel':                   { code: 'ILS',  symbol: '₪',     usdRate: 3.7    },
+  'Iran':                     { code: 'IRR',  symbol: 'Rl',    usdRate: 42000  },
+  'Iraq':                     { code: 'IQD',  symbol: 'IQD',   usdRate: 1310   },
+  'Syria':                    { code: 'SYP',  symbol: '£',     usdRate: 13000  },
+  'Yemen':                    { code: 'YER',  symbol: 'Rl',    usdRate: 250    },
+  'Palestine':                { code: 'ILS',  symbol: '₪',     usdRate: 3.7    },
+  'Afghanistan':              { code: 'AFN',  symbol: '؋',     usdRate: 70     },
+  'Kazakhstan':               { code: 'KZT',  symbol: '₸',     usdRate: 460    },
+  'Uzbekistan':               { code: 'UZS',  symbol: "so'm",  usdRate: 12600  },
+  'Kyrgyzstan':               { code: 'KGS',  symbol: 'с',     usdRate: 89     },
+  'Tajikistan':               { code: 'TJS',  symbol: 'SM',    usdRate: 10.9   },
+  'Turkmenistan':             { code: 'TMT',  symbol: 'T',     usdRate: 3.5    },
+  // ── Oceania ──
+  'Australia':                { code: 'AUD',  symbol: 'A$',    usdRate: 1.56   },
+  'New Zealand':              { code: 'NZD',  symbol: 'NZ$',   usdRate: 1.63   },
+  'Papua New Guinea':         { code: 'PGK',  symbol: 'K',     usdRate: 3.8    },
+  'Fiji':                     { code: 'FJD',  symbol: 'FJ$',   usdRate: 2.26   },
+};
+
+/**
+ * Returns the currency for a country, defaulting to USD for unknown countries.
+ */
+export function getCountryCurrency(countryName: string): CountryCurrency {
+  return COUNTRY_CURRENCY[countryName] || { code: 'USD', symbol: '$', usdRate: 1 };
+}
+
+/**
+ * Format a subscription plan price for display in the user's local currency.
+ * @param planAmount   The amount as stored on the plan object.
+ * @param planCurrency 'NGN' (Nigeria plans) or 'USD' (Africa/Global plans). Omit = NGN.
+ * @param userCountry  The user's country name.
+ */
+export function formatSubscriptionPrice(
+  planAmount: number,
+  planCurrency: string = 'NGN',
+  userCountry: string
+): string {
+  if (planAmount === 0) return 'Free';
+  const currency = getCountryCurrency(userCountry);
+  if (planCurrency === 'NGN') {
+    // Nigeria plan: amount already in NGN; show with NGN symbol
+    return `${currency.symbol}${planAmount.toLocaleString()}`;
+  }
+  // USD plan: convert to local currency for display
+  const localAmount = Math.round(planAmount * currency.usdRate);
+  return `${currency.symbol}${localAmount.toLocaleString()}`;
+}
+
+/**
+ * Convert a plan amount to local currency units for payment.
+ * Returns the amount the gateway should charge.
+ */
+export function getLocalPaymentAmount(
+  planAmount: number,
+  planCurrency: string = 'NGN',
+  userCountry: string
+): number {
+  if (planCurrency === 'NGN') return planAmount;
+  const currency = getCountryCurrency(userCountry);
+  return Math.round(planAmount * currency.usdRate);
 }

@@ -159,10 +159,14 @@ const App: React.FC = () => {
                 return;
             }
 
-            // Detect Paystack/Flutterwave payment callback: /payment/verify?trxref=...&reference=...
+            // Detect Paystack/Flutterwave payment callback
             const isPaymentCallback = window.location.pathname === '/payment/verify';
             const paymentReference = urlParams.get('reference') || urlParams.get('trxref');
-            if (isPaymentCallback && paymentReference) {
+            const flwTransactionId = urlParams.get('transaction_id');
+            const flwTxRef = urlParams.get('tx_ref');
+            const flwStatus = urlParams.get('status');
+
+            if (isPaymentCallback && (paymentReference || flwTransactionId)) {
                 // Clean the URL immediately
                 window.history.replaceState({}, document.title, '/');
 
@@ -173,8 +177,18 @@ const App: React.FC = () => {
                 const tokenAtStart = getStoredToken();
                 if (tokenAtStart) {
                     try {
-                        // Verify the payment via backend
-                        const verified = await paymentService.verifyPaystackPayment(paymentReference);
+                        let verified = false;
+
+                        if (flwTransactionId) {
+                            // Flutterwave callback
+                            verified = flwStatus === 'successful'
+                                ? await paymentService.verifyFlutterwavePayment(flwTransactionId, flwTxRef || undefined)
+                                : false;
+                        } else if (paymentReference) {
+                            // Paystack callback
+                            verified = await paymentService.verifyPaystackPayment(paymentReference);
+                        }
+
                         if (verified) {
                             // Refresh user data to get the updated subscription
                             const updatedUser = await apiService.getMe();

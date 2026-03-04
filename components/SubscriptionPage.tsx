@@ -2,6 +2,7 @@ import React from 'react';
 import { getSubscriptionPlans, getRegion } from '../constants/subscriptions';
 import { CheckIcon } from './icons';
 import { SubscriptionPlan, User } from '../types';
+import { formatSubscriptionPrice } from '../constants/countries';
 
 interface SubscriptionPageProps {
     user: User;
@@ -12,7 +13,7 @@ export const SubscriptionPage: React.FC<SubscriptionPageProps> = ({ user, onSele
     const currentPlan = user.subscriptionTier || 'Free';
     const plans = getSubscriptionPlans(user.role, user.country);
     const region = getRegion(user.country || 'Nigeria');
-    const currency = region === 'Nigeria' ? '₦' : '$';
+    const userCountry = user.country || 'Nigeria';
 
     // Check if the user's current subscription has expired
     const isSubscriptionExpired = !!(
@@ -102,7 +103,7 @@ export const SubscriptionPage: React.FC<SubscriptionPageProps> = ({ user, onSele
                             
                             <p className="mt-6 flex items-baseline gap-x-1">
                                 <span className="text-4xl font-bold tracking-tight text-gray-900">
-                                    {currency}{plan.priceMonthly.toLocaleString()}
+                                    {formatSubscriptionPrice(plan.priceMonthly, plan.currency || 'NGN', userCountry)}
                                 </span>
                                 <span className="text-sm font-semibold leading-6 text-gray-600">
                                     /month
@@ -138,7 +139,7 @@ export const SubscriptionPage: React.FC<SubscriptionPageProps> = ({ user, onSele
                             <div className="mt-8 pt-4 border-t border-gray-200/80">
                                 {plan.priceYearly > 0 ? (
                                     <p className="text-center text-gray-600">
-                                        <span className="text-2xl font-bold text-dark">{currency}{plan.priceYearly.toLocaleString()}</span>
+                                        <span className="text-2xl font-bold text-dark">{formatSubscriptionPrice(plan.priceYearly, plan.currency || 'NGN', userCountry)}</span>
                                         <span className="text-sm"> / year</span>
                                         <span className="block text-xs font-semibold text-secondary">
                                             SAVE {Math.round((1 - plan.priceYearly / (plan.priceMonthly * 12)) * 100)}%

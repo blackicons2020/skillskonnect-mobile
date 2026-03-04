@@ -8,6 +8,7 @@ import React, { useState } from 'react';
 import { SubscriptionPlan, User } from '../types';
 import { XCircleIcon } from './icons';
 import { paymentService } from '../services/paymentService';
+import { formatSubscriptionPrice } from '../constants/countries';
 
 interface SubscriptionPaymentDetailsModalProps {
     plan: SubscriptionPlan;
@@ -25,6 +26,8 @@ export const SubscriptionPaymentDetailsModal: React.FC<SubscriptionPaymentDetail
     const amount = billingCycle === 'monthly' ? plan.priceMonthly : plan.priceYearly;
     const gateway = paymentService.getPaymentGateway(user.country || 'Nigeria');
     const gatewayName = gateway === 'paystack' ? 'Paystack' : 'Flutterwave';
+    const planCurrency = plan.currency || 'NGN';
+    const userCountry = user.country || 'Nigeria';
 
     const handlePayment = async () => {
         if (plan.name === 'Free') {
@@ -95,7 +98,7 @@ export const SubscriptionPaymentDetailsModal: React.FC<SubscriptionPaymentDetail
                                     <div className="text-center">
                                         <p className="font-semibold text-gray-900">Monthly</p>
                                         <p className="text-2xl font-bold text-primary mt-1">
-                                            ₦{plan.priceMonthly.toLocaleString()}
+                                            {formatSubscriptionPrice(plan.priceMonthly, planCurrency, userCountry)}
                                         </p>
                                         <p className="text-xs text-gray-500 mt-1">per month</p>
                                     </div>
@@ -111,7 +114,7 @@ export const SubscriptionPaymentDetailsModal: React.FC<SubscriptionPaymentDetail
                                     <div className="text-center">
                                         <p className="font-semibold text-gray-900">Yearly</p>
                                         <p className="text-2xl font-bold text-primary mt-1">
-                                            ₦{plan.priceYearly.toLocaleString()}
+                                            {formatSubscriptionPrice(plan.priceYearly, planCurrency, userCountry)}
                                         </p>
                                         <p className="text-xs text-green-600 font-semibold mt-1">SAVE {Math.round((1 - plan.priceYearly / (plan.priceMonthly * 12)) * 100)}%</p>
                                     </div>
@@ -130,7 +133,7 @@ export const SubscriptionPaymentDetailsModal: React.FC<SubscriptionPaymentDetail
                         </div>
                         <div className="flex items-center justify-between">
                             <span className="text-sm font-medium text-gray-700">Total Amount:</span>
-                            <span className="text-2xl font-bold text-primary">₦{amount.toLocaleString()}</span>
+                            <span className="text-2xl font-bold text-primary">{formatSubscriptionPrice(amount, planCurrency, userCountry)}</span>
                         </div>
                         {plan.name !== 'Free' && (
                             <p className="text-xs text-gray-600 mt-2">

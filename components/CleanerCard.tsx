@@ -2,7 +2,7 @@
 import React from 'react';
 import { Cleaner } from '../types';
 import { StarIcon, MapPinIcon, RocketLaunchIcon, CheckBadgeIcon } from './icons';
-import { getPricingModel } from '../constants/countries';
+import { getPricingModel, getCountryCurrency } from '../constants/countries';
 
 interface CleanerCardProps {
   cleaner: Cleaner;
@@ -13,6 +13,7 @@ export const CleanerCard: React.FC<CleanerCardProps> = ({ cleaner, onClick }) =>
   const locationString = cleaner.city === 'Other' && cleaner.otherCity ? cleaner.otherCity : cleaner.city;
   const locationDisplay = [cleaner.country || 'Nigeria', cleaner.state, locationString].filter(Boolean).join(', ');
   const pricingModel = getPricingModel(cleaner.country || 'Nigeria');
+  const currencySymbol = getCountryCurrency(cleaner.country || 'Nigeria').symbol;
   
   return (
     <div
@@ -74,7 +75,7 @@ export const CleanerCard: React.FC<CleanerCardProps> = ({ cleaner, onClick }) =>
                 cleaner.chargeHourly ? (
                     <>
                         <span className="text-xl font-bold text-primary">
-                            ₦{cleaner.chargeHourly.toLocaleString()}
+                            {currencySymbol}{cleaner.chargeHourly.toLocaleString()}
                         </span>
                         <span className="text-xs text-gray-500 ml-1">/hour</span>
                     </>
