@@ -4,6 +4,7 @@ import { skillTree } from '../constants/skillTypes';
 interface SearchableSkillSelectorProps {
   selectedSkills: string[];
   onChange: (skills: string[]) => void;
+  maxSkills?: number;
 }
 
 const SearchIcon: React.FC<{ className?: string }> = ({ className }) => (
@@ -18,8 +19,9 @@ const XMarkIcon: React.FC<{ className?: string }> = ({ className }) => (
   </svg>
 );
 
-export const SearchableSkillSelector: React.FC<SearchableSkillSelectorProps> = ({ selectedSkills, onChange }) => {
+export const SearchableSkillSelector: React.FC<SearchableSkillSelectorProps> = ({ selectedSkills, onChange, maxSkills = 3 }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const limitReached = selectedSkills.length >= maxSkills;
 
   // Filter the tree based on search term
   const filteredTree = useMemo(() => {
@@ -42,7 +44,7 @@ export const SearchableSkillSelector: React.FC<SearchableSkillSelectorProps> = (
   const toggleSkill = (skill: string) => {
     if (selectedSkills.includes(skill)) {
       onChange(selectedSkills.filter(s => s !== skill));
-    } else {
+    } else if (selectedSkills.length < maxSkills) {
       onChange([...selectedSkills, skill]);
     }
   };
@@ -79,12 +81,20 @@ export const SearchableSkillSelector: React.FC<SearchableSkillSelectorProps> = (
         )}
       </div>
 
+      {/* Limit Warning */}
+      {limitReached && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
+          <svg className="h-4 w-4 text-amber-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.168 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd"/></svg>
+          <span className="text-xs font-medium text-amber-700">Maximum {maxSkills} skills allowed. Remove a skill to select a different one.</span>
+        </div>
+      )}
+
       {/* Selected Skills Tags */}
       {selectedSkills.length > 0 && (
         <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold text-blue-700 uppercase tracking-wide">
-              Selected ({selectedSkills.length})
+              Selected ({selectedSkills.length}/{maxSkills})
             </span>
             <button
               type="button"
@@ -150,15 +160,18 @@ export const SearchableSkillSelector: React.FC<SearchableSkillSelectorProps> = (
                     <div className="grid grid-cols-1 sm:grid-cols-2 p-3 gap-1">
                       {sub.skills.map(skill => {
                         const isSelected = selectedSkills.includes(skill);
+                        const isDisabled = !isSelected && limitReached;
                         return (
                           <label
                             key={skill}
                             className={`
-                              flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer
-                              transition-all duration-150 select-none
+                              flex items-center justify-between px-3 py-2 rounded-lg select-none
+                              transition-all duration-150
                               ${isSelected
-                                ? 'bg-blue-600 text-white shadow-sm'
-                                : 'text-gray-700 hover:bg-gray-100'}
+                                ? 'bg-blue-600 text-white shadow-sm cursor-pointer'
+                                : isDisabled
+                                  ? 'text-gray-400 bg-gray-50 cursor-not-allowed opacity-50'
+                                  : 'text-gray-700 hover:bg-gray-100 cursor-pointer'}
                             `}
                           >
                             <span className="text-sm font-medium truncate pr-2">{skill}</span>
@@ -166,6 +179,7 @@ export const SearchableSkillSelector: React.FC<SearchableSkillSelectorProps> = (
                               type="checkbox"
                               checked={isSelected}
                               onChange={() => toggleSkill(skill)}
+                              disabled={isDisabled}
                               className="sr-only"
                             />
                             <div className={`
@@ -195,7 +209,7 @@ export const SearchableSkillSelector: React.FC<SearchableSkillSelectorProps> = (
             {filteredTree.flatMap(c => c.subCategories.flatMap(s => s.skills)).length} skills across {filteredTree.length} categories
           </span>
           {selectedSkills.length === 0 && (
-            <span className="text-xs text-gray-400 italic">Click any skill to select it</span>
+            <span className="text-xs text-gray-400 italic">Select up to {maxSkills} skills</span>
           )}
         </div>
       </div>
