@@ -337,54 +337,40 @@ const App: React.FC = () => {
 
     const handleAuthSuccess = async (userData: User, shouldNavigate = true, skipRefetch = false) => {
         setUser(userData);
-        if (skipRefetch) {
-            // Data was pre-fetched in parallel — only fetch allUsers for admins (not needed for regular users)
-            if (userData.isAdmin) {
-                try {
-                    const users = await apiService.adminGetAllUsers();
-                    setAllUsers(users);
-                } catch (e) { console.error('Failed to fetch all users:', e); }
-            }
-        } else {
-            await refetchAllData(userData);
-        }
 
-        if (cleanerToRememberForBooking) {
-            // User had intended to book a cleaner. 
-            // Redirect them to the dashboard and open the booking modal immediately.
-            if (userData.userType === 'client') {
-                handleNavigate('clientDashboard');
-                // Use a small timeout to allow the dashboard to mount before setting modal state
-                setTimeout(() => {
-                    setCleanerToBook(cleanerToRememberForBooking);
-                    setIsBookingModalOpen(true);
-                    setCleanerToRememberForBooking(null);
-                }, 100);
-            } else {
-                // If they are not a client (e.g. they signed up as a cleaner), clear the booking intent
-                setCleanerToRememberForBooking(null);
-                handleNavigate('cleanerDashboard');
-            }
-            return;
-        }
-
+        // Navigate IMMEDIATELY so the auth modal disappears right away
         if (shouldNavigate) {
-            // Check isAdmin first (most reliable field set by backend)
-            if (userData.isAdmin) {
+            if (cleanerToRememberForBooking) {
+                if (userData.userType === 'client' || userData.role === 'client') {
+                    handleNavigate('clientDashboard');
+                    setTimeout(() => {
+                        setCleanerToBook(cleanerToRememberForBooking);
+                        setIsBookingModalOpen(true);
+                        setCleanerToRememberForBooking(null);
+                    }, 100);
+                } else {
+                    setCleanerToRememberForBooking(null);
+                    handleNavigate('cleanerDashboard');
+                }
+            } else if (userData.isAdmin || (userData as any).role === 'admin' || (userData as any).adminRole) {
                 handleNavigate('adminDashboard');
             } else if ((userData as any).userType === 'worker' || userData.role === 'cleaner') {
                 handleNavigate('cleanerDashboard');
-            } else if ((userData as any).userType === 'client' || userData.role === 'client') {
-                // Default to client dashboard for clients
-                handleNavigate('clientDashboard');
             } else {
-                // Fallback - check if they have any user type set
-                if (userData.role === 'cleaner') {
-                    handleNavigate('cleanerDashboard');
-                } else {
-                    handleNavigate('clientDashboard');
-                }
+                handleNavigate('clientDashboard');
             }
+        }
+
+        // Refetch data in the background AFTER navigation
+        if (skipRefetch) {
+            if (userData.isAdmin) {
+                apiService.adminGetAllUsers()
+                    .then(users => setAllUsers(users))
+                    .catch(e => console.error('Failed to fetch all users:', e));
+            }
+        } else {
+            // Fire and forget — don't block navigation
+            refetchAllData(userData).catch(e => console.error('Background refetch failed:', e));
         }
     };
 
@@ -404,9 +390,8 @@ const App: React.FC = () => {
             if (response.token && response.user) {
                 storeToken(response.token, false); // New registrations: session only until next explicit login
                 setUser(response.user);
-                await refetchAllData(response.user);
 
-                // Redirect directly to dashboard based on userType
+                // Navigate immediately, refetch in background
                 if (response.user.role === 'admin') {
                     handleNavigate('adminDashboard');
                 } else if (response.user.userType === 'worker' || userType === 'worker') {
@@ -414,6 +399,8 @@ const App: React.FC = () => {
                 } else {
                     handleNavigate('clientDashboard');
                 }
+
+                refetchAllData(response.user).catch(e => console.error('Background refetch failed:', e));
             } else {
                 // Response received but unexpected format
                 setAuthMessage({ type: 'error', text: 'Signup succeeded but an unexpected response was received. Please try logging in.' });
