@@ -28,7 +28,7 @@ export const HelpCenterPage: React.FC<{ onNavigate: (page: View) => void }> = ({
     const sections = [
         { id: 'all' as const, label: 'All Topics' },
         { id: 'clients' as const, label: '👤 For Clients' },
-        { id: 'workers' as const, label: '🔧 For Workers' },
+        { id: 'workers' as const, label: '🔧 For Professionals' },
         { id: 'account' as const, label: '⚙️ Account & Profile' },
         { id: 'payments' as const, label: '💳 Payments & Subscriptions' },
     ];
@@ -54,13 +54,13 @@ export const HelpCenterPage: React.FC<{ onNavigate: (page: View) => void }> = ({
                                 <p className="font-bold mb-1">If you're a Client:</p>
                                 <ol className="space-y-1 list-decimal list-inside text-white/90">
                                     <li>Sign up and complete your profile</li>
-                                    <li>Browse or search for workers</li>
-                                    <li>Book a worker or post a job</li>
+                                    <li>Browse or search for professionals</li>
+                                    <li>Book a professional or post a job</li>
                                     <li>Confirm job completion and leave a review</li>
                                 </ol>
                             </div>
                             <div className="bg-white/20 rounded-lg p-3">
-                                <p className="font-bold mb-1">If you're a Worker:</p>
+                                <p className="font-bold mb-1">If you're a Professional:</p>
                                 <ol className="space-y-1 list-decimal list-inside text-white/90">
                                     <li>Sign up and complete your profile</li>
                                     <li>Choose a subscription plan</li>
@@ -99,35 +99,35 @@ export const HelpCenterPage: React.FC<{ onNavigate: (page: View) => void }> = ({
                                     <p>Click <strong>Sign Up</strong> on the homepage. Enter your email and password, then on your dashboard click <strong>Complete Your Profile</strong>. Select <em>Client (Individual)</em> or <em>Client (Company)</em>, fill in your personal or company details, contact info, and location. Once saved you'll have full access to the platform.</p>
                                 </FAQItem>
 
-                                <FAQItem question="How do I search for and find a worker?">
-                                    <p>After completing your profile, go to the <strong>Find a Worker</strong> tab on your dashboard. You can filter workers by:</p>
+                                <FAQItem question="How do I search for and find a professional?">
+                                    <p>After completing your profile, go to the <strong>Find a Professional</strong> tab on your dashboard. You can filter professionals by:</p>
                                     <ul className="list-disc list-inside mt-2 space-y-1">
                                         <li><strong>Service type</strong> — e.g. House Cleaning, Office Cleaning, Laundry</li>
                                         <li><strong>Location</strong> — city or area</li>
                                         <li><strong>Price range</strong> — minimum/maximum rate</li>
                                         <li><strong>Rating</strong> — minimum star rating</li>
                                     </ul>
-                                    <p className="mt-2">Workers closest to you with active subscriptions appear first in results.</p>
+                                    <p className="mt-2">Professionals closest to you with active subscriptions appear first in results.</p>
                                 </FAQItem>
 
-                                <FAQItem question="How do I book a worker?">
-                                    <p>Find a worker you like and click their card to view their full profile. Then click <strong>Book Now</strong>. A booking modal will appear where you enter the job date, time, and description, then confirm. The worker will be notified and the booking appears in your <strong>My Bookings</strong> tab.</p>
+                                <FAQItem question="How do I book a professional?">
+                                    <p>Find a professional you like and click their card to view their full profile. Then click <strong>Book Now</strong>. A booking modal will appear where you enter the job date, time, and description, then confirm. The professional will be notified and the booking appears in your <strong>My Bookings</strong> tab.</p>
                                 </FAQItem>
 
-                                <FAQItem question="How do I post a job for workers to apply to?">
-                                    <p>Go to the <strong>My Posted Jobs</strong> tab on your dashboard and click <strong>Post a New Job</strong>. Fill in the job title, description, service category, location, and budget. Once posted, subscribed workers in your area can view it in their <strong>Available Jobs</strong> tab and apply. You can then review applicants and contact your preferred worker directly.</p>
+                                <FAQItem question="How do I post a job for professionals to apply to?">
+                                    <p>Go to the <strong>My Posted Jobs</strong> tab on your dashboard and click <strong>Post a New Job</strong>. Fill in the job title, description, service category, location, and budget. Once posted, subscribed professionals in your area can view it in their <strong>Available Jobs</strong> tab and apply. You can then review applicants and contact your preferred professional directly.</p>
                                 </FAQItem>
 
                                 <FAQItem question="How do I confirm a job is completed?">
-                                    <p>Once a worker finishes the job, go to <strong>My Bookings</strong> on your dashboard, find the booking, and click <strong>Mark as Completed</strong>. This updates the booking status and triggers a prompt asking you to leave a review for the worker.</p>
+                                    <p>Once a professional finishes the job, go to <strong>My Bookings</strong> on your dashboard, find the booking, and click <strong>Mark as Completed</strong>. This updates the booking status and triggers a prompt asking you to leave a review for the professional.</p>
                                 </FAQItem>
 
-                                <FAQItem question="How do I leave a review for a worker?">
-                                    <p>After marking a booking as completed, you will see a <strong>Leave a Review</strong> button on that booking. Rate the worker on overall quality, timeliness, thoroughness, and professional conduct. Reviews are public and help other clients make informed choices.</p>
+                                <FAQItem question="How do I leave a review for a professional?">
+                                    <p>After marking a booking as completed, you will see a <strong>Leave a Review</strong> button on that booking. Rate the professional on overall quality, timeliness, thoroughness, and professional conduct. Reviews are public and help other clients make informed choices.</p>
                                 </FAQItem>
 
-                                <FAQItem question="Can I message a worker before booking?">
-                                    <p>Yes. On a worker's profile card you'll see a <strong>Message</strong> button. Click it to open a direct chat with that worker in the <strong>Messages</strong> tab. Discuss job details, get quotes, and confirm availability before making a formal booking.</p>
+                                <FAQItem question="Can I message a professional before booking?">
+                                    <p>Yes. On a professional's profile card you'll see a <strong>Message</strong> button. Click it to open a direct chat with that professional in the <strong>Messages</strong> tab. Discuss job details, get quotes, and confirm availability before making a formal booking.</p>
                                 </FAQItem>
                             </>
                         )}
@@ -135,10 +135,10 @@ export const HelpCenterPage: React.FC<{ onNavigate: (page: View) => void }> = ({
                         {/* ── FOR WORKERS ── */}
                         {(activeSection === 'all' || activeSection === 'workers') && (
                             <>
-                                <SectionHeader icon="🔧" title="For Workers / Professionals" />
+                                <SectionHeader icon="🔧" title="For Professionals" />
 
-                                <FAQItem question="How do I sign up as a worker?">
-                                    <p>Click <strong>Sign Up</strong> on the homepage. After entering your email and password, your dashboard will open. Complete your profile by selecting <em>Worker (Individual)</em> or <em>Worker (Registered Company)</em>. You'll be asked for your name, contact details, location, skills, years of experience, service rate, and a profile photo. Workers with complete profiles are prioritised in client searches.</p>
+                                <FAQItem question="How do I sign up as a professional?">
+                                    <p>Click <strong>Sign Up</strong> on the homepage. After entering your email and password, your dashboard will open. Complete your profile by selecting <em>Professional (Individual)</em> or <em>Professional (Registered Company)</em>. You'll be asked for your name, contact details, location, skills, years of experience, service rate, and a profile photo. Professionals with complete profiles are prioritised in client searches.</p>
                                 </FAQItem>
 
                                 <FAQItem question="How do I appear in client searches?">
@@ -148,7 +148,7 @@ export const HelpCenterPage: React.FC<{ onNavigate: (page: View) => void }> = ({
                                         <li>Have an active (non-Free) subscription</li>
                                         <li>Be verified — adds a trust badge and boosts your ranking</li>
                                     </ul>
-                                    <p className="mt-2">Workers with higher-tier subscriptions appear higher in search results.</p>
+                                    <p className="mt-2">Professionals with higher-tier subscriptions appear higher in search results.</p>
                                 </FAQItem>
 
                                 <FAQItem question="How do I apply for posted jobs?">
@@ -170,7 +170,7 @@ export const HelpCenterPage: React.FC<{ onNavigate: (page: View) => void }> = ({
                                 </FAQItem>
 
                                 <FAQItem question="How do I set my service rate?">
-                                    <p>In your profile, set a <strong>Daily Rate</strong> or mark your price as <em>Negotiable</em> depending on your country. Workers in Europe and Western regions can also set an hourly rate. You can update your rate any time from the <strong>My Profile</strong> tab.</p>
+                                    <p>In your profile, set a <strong>Daily Rate</strong> or mark your price as <em>Negotiable</em> depending on your country. Professionals in Europe and Western regions can also set an hourly rate. You can update your rate any time from the <strong>My Profile</strong> tab.</p>
                                 </FAQItem>
 
                                 <FAQItem question="How do I get paid for jobs?">
@@ -193,7 +193,7 @@ export const HelpCenterPage: React.FC<{ onNavigate: (page: View) => void }> = ({
                                 </FAQItem>
 
                                 <FAQItem question="When will my profile become visible to others?">
-                                    <p>For <strong>workers</strong>, your profile becomes visible in client search results once you have (1) completed your profile and (2) an active paid subscription. For <strong>clients</strong>, your profile is needed internally to post jobs and make bookings, but clients are not displayed publicly.</p>
+                                    <p>For <strong>professionals</strong>, your profile becomes visible in client search results once you have (1) completed your profile and (2) an active paid subscription. For <strong>clients</strong>, your profile is needed internally to post jobs and make bookings, but clients are not displayed publicly.</p>
                                 </FAQItem>
 
                                 <FAQItem question="Can I use this app on my phone?">

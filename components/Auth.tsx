@@ -149,7 +149,7 @@ const SignupTab: React.FC<SignupTabProps> = ({ onSignup }) => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!userType) {
-            alert('Please select whether you are a Client or a Worker.');
+            alert('Please select whether you are a Client or a Professional.');
             return;
         }
         if (password !== confirmPassword) {
@@ -194,7 +194,7 @@ const SignupTab: React.FC<SignupTabProps> = ({ onSignup }) => {
                                 }`}
                             >
                                 <span className="block text-lg">🛠️</span>
-                                <span className="text-sm">Worker</span>
+                                <span className="text-sm">Professional</span>
                                 <span className="block text-xs text-gray-500 mt-0.5">I offer services</span>
                             </button>
                         </div>

@@ -84,7 +84,7 @@ export const JobApplicantsModal: React.FC<JobApplicantsModalProps> = ({ job, all
                                                         📋 Applied for: {(applicant as EnrichedApplicant).positionApplied || (applicant as any).workerName || job.service || 'General'}
                                                     </p>
                                                     <p className="text-sm text-gray-500">
-                                                        {applicant.userType || 'Worker'}
+                                                        {applicant.userType || 'Professional'}
                                                     </p>
                                                 </div>
                                                 {applicant.isVerified && (
@@ -168,7 +168,7 @@ export const JobApplicantsModal: React.FC<JobApplicantsModalProps> = ({ job, all
                                                 {onStartChat && applicant.id && (
                                                     <button
                                                         onClick={() => {
-                                                            onStartChat(applicant.id!, applicant.fullName || (applicant as EnrichedApplicant).workerName || 'Worker');
+                                                            onStartChat(applicant.id!, applicant.fullName || (applicant as EnrichedApplicant).workerName || 'Professional');
                                                             onClose();
                                                         }}
                                                         className="inline-flex items-center px-3 py-1.5 border border-purple-300 shadow-sm text-sm font-medium rounded-md text-purple-700 bg-purple-50 hover:bg-purple-100"

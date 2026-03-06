@@ -58,7 +58,33 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onNavi
     );
     const [showProfileCompletion, setShowProfileCompletion] = useState(false);
 
-    // Chat state - for auto-selecting chat when messaging a client
+    // PWA install prompt
+    const [installPrompt, setInstallPrompt] = useState<any>(null);
+    const [isAppInstalled, setIsAppInstalled] = useState(false);
+    const [showInstallBanner, setShowInstallBanner] = useState(true);
+
+    useEffect(() => {
+        const handler = (e: Event) => {
+            e.preventDefault();
+            setInstallPrompt(e);
+        };
+        window.addEventListener('beforeinstallprompt', handler);
+        window.addEventListener('appinstalled', () => setIsAppInstalled(true));
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+            setIsAppInstalled(true);
+        }
+        return () => window.removeEventListener('beforeinstallprompt', handler);
+    }, []);
+
+    const handleInstallClick = async () => {
+        if (!installPrompt) return;
+        await installPrompt.prompt();
+        const choice = await installPrompt.userChoice;
+        if (choice.outcome === 'accepted') {
+            setInstallPrompt(null);
+            setIsAppInstalled(true);
+        }
+    };
     const [chatToOpen, setChatToOpen] = useState<string | null>(null);
 
     // Handler for profile updates
@@ -381,6 +407,29 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onNavi
             {/* Main Content Area */}
             <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
+            {/* PWA Install Banner */}
+            {installPrompt && !isAppInstalled && showInstallBanner && (
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 mb-6 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                    <span className="text-3xl flex-shrink-0">📲</span>
+                    <div className="flex-grow">
+                        <h3 className="font-bold text-blue-900 text-sm sm:text-base">Install Skills Konnect on Your Device</h3>
+                        <p className="text-xs sm:text-sm text-blue-700 mt-0.5">Get faster access, work offline, and enjoy a full app experience — no app store needed. One click to install on your phone or desktop!</p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                        <button
+                            onClick={handleInstallClick}
+                            className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-secondary transition-colors whitespace-nowrap"
+                        >
+                            📲 Install App
+                        </button>
+                        <button
+                            onClick={() => setShowInstallBanner(false)}
+                            className="text-blue-400 hover:text-blue-600 text-lg leading-none p-1"
+                            aria-label="Dismiss"
+                        >✕</button>
+                    </div>
+                </div>
+            )}
 
             {/* Alert for incomplete profile */}
             {isProfileIncomplete && (
@@ -588,12 +637,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onNavi
                                 {formData.role === 'cleaner' ? (
                                     <ProfileField
                                         label="Account Type"
-                                        value={formData.cleanerType === 'Company' ? 'Worker (Registered Company)' : 'Worker (Individual)'}
+                                        value={formData.cleanerType === 'Company' ? 'Professional (Registered Company)' : 'Professional (Individual)'}
                                         isEditing={isEditing}
                                     >
                                         <select name="cleanerType" value={formData.cleanerType || 'Individual'} onChange={handleInputChange} className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm">
-                                            <option value="Individual">Worker (Individual)</option>
-                                            <option value="Company">Worker (Registered Company)</option>
+                                            <option value="Individual">Professional (Individual)</option>
+                                            <option value="Company">Professional (Registered Company)</option>
                                         </select>
                                     </ProfileField>
                                 ) : (
@@ -794,7 +843,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onNavi
                                 <div className="ml-3">
                                     <h3 className="text-sm font-semibold text-yellow-800">Subscribe to Apply for Jobs</h3>
                                     <p className="text-sm text-yellow-700 mt-1">
-                                        Job listings are available to subscribed workers only. Upgrade your subscription to apply for these opportunities.
+                                        Job listings are available to subscribed professionals only. Upgrade your subscription to apply for these opportunities.
                                     </p>
                                     <button
                                         onClick={() => onNavigate('subscription')}
@@ -1128,7 +1177,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onNavi
                                 <span className="text-2xl flex-shrink-0">🛡️</span>
                                 <div className="flex-1 min-w-0">
                                     <p className="text-sm font-semibold text-purple-900">Get verified to build trust</p>
-                                    <p className="text-sm text-purple-700 mt-0.5">Verified workers get a badge on their profile and appear higher in search results. Submit your documents to get verified.</p>
+                                    <p className="text-sm text-purple-700 mt-0.5">Verified professionals get a badge on their profile and appear higher in search results. Submit your documents to get verified.</p>
                                     <button onClick={() => setActiveTab('verification')} className="mt-2 text-xs font-bold text-purple-600 hover:underline">Start Verification →</button>
                                 </div>
                                 <span className="text-xs text-gray-400 flex-shrink-0">Today</span>

@@ -30,7 +30,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ cleaner, user, onClo
                     </div>
 
                     <div className="my-6 p-4 bg-light rounded-lg text-center">
-                        <p className="text-sm text-gray-600">Worker's Charge</p>
+                        <p className="text-sm text-gray-600">Professional's Charge</p>
                         <p className="text-3xl font-extrabold text-dark">₦{baseAmount.toLocaleString()}</p>
                     </div>
 
@@ -40,14 +40,14 @@ export const BookingModal: React.FC<BookingModalProps> = ({ cleaner, user, onClo
                             <div className="text-sm">
                                 <p className="font-bold text-gray-900 mb-2">Direct Payment</p>
                                 <p className="text-gray-600 mb-3">
-                                    After booking, you'll receive the worker's contact information. Arrange payment directly with the service provider upon job completion.
+                                    After booking, you'll receive the professional's contact information. Arrange payment directly with the service provider upon job completion.
                                 </p>
                                 <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
                                     <p className="text-xs text-blue-800">
                                         <strong>Note:</strong> Skills Konnect facilitates connections but is not responsible for direct payment transactions. Please ensure clear communication with your service provider.
                                     </p>
                                 </div>
-                                <p className="font-semibold text-primary mt-3">Worker's Charge: ₦{baseAmount.toLocaleString()}</p>
+                                <p className="font-semibold text-primary mt-3">Professional's Charge: ₦{baseAmount.toLocaleString()}</p>
                             </div>
                         </div>
                     </div>

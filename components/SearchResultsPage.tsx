@@ -97,7 +97,7 @@ export const SearchResultsPage: React.FC<SearchResultsPageProps> = ({ allCleaner
 
     const resultsTitle = useMemo(() => {
         if (activeFilters.service || activeFilters.location || activeFilters.minPrice || activeFilters.maxPrice || activeFilters.minRating) return 'Filtered Results';
-        return 'All Available Workers';
+        return 'All Available Professionals';
     }, [activeFilters]);
 
 
@@ -108,7 +108,7 @@ export const SearchResultsPage: React.FC<SearchResultsPageProps> = ({ allCleaner
 
     return (
         <div className="p-4 sm:p-8 container mx-auto">
-            <h1 className="text-3xl font-bold text-dark text-center mb-8">Find the Perfect Worker</h1>
+            <h1 className="text-3xl font-bold text-dark text-center mb-8">Find the Perfect Professional</h1>
             
             {/* Search Bar Container */}
             <div className="w-full bg-white rounded-xl p-2 shadow-xl mb-8">

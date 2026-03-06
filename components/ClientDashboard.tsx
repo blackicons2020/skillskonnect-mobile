@@ -75,7 +75,7 @@ const ServiceRecommendations: React.FC<ServiceRecommendationsProps> = ({ isLoadi
                         className="p-4 bg-white rounded-lg shadow-md text-left hover:shadow-lg hover:-translate-y-1 transition-all duration-300 border border-transparent hover:border-primary"
                     >
                         <p className="font-semibold text-dark">{service}</p>
-                        <span className="text-sm text-primary font-medium mt-2 inline-block">Find Workers &rarr;</span>
+                        <span className="text-sm text-primary font-medium mt-2 inline-block">Find Professionals &rarr;</span>
                     </button>
                 ))}
             </div>
@@ -140,6 +140,34 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user, allClean
     // Upgrade banner state for free/unsubscribed users
     const isFreeUser = !user.subscriptionTier || user.subscriptionTier === 'Free';
     const [showUpgradeBanner, setShowUpgradeBanner] = useState(true);
+
+    // PWA install prompt
+    const [installPrompt, setInstallPrompt] = useState<any>(null);
+    const [isAppInstalled, setIsAppInstalled] = useState(false);
+    const [showInstallBanner, setShowInstallBanner] = useState(true);
+
+    useEffect(() => {
+        const handler = (e: Event) => {
+            e.preventDefault();
+            setInstallPrompt(e);
+        };
+        window.addEventListener('beforeinstallprompt', handler);
+        window.addEventListener('appinstalled', () => setIsAppInstalled(true));
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+            setIsAppInstalled(true);
+        }
+        return () => window.removeEventListener('beforeinstallprompt', handler);
+    }, []);
+
+    const handleInstallClick = async () => {
+        if (!installPrompt) return;
+        await installPrompt.prompt();
+        const choice = await installPrompt.userChoice;
+        if (choice.outcome === 'accepted') {
+            setInstallPrompt(null);
+            setIsAppInstalled(true);
+        }
+    };
     
     // Check if profile is incomplete
     const isProfileIncomplete = !user.userType || !user.phoneNumber || !user.country;
@@ -346,7 +374,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user, allClean
 
     const resultsTitle = useMemo(() => {
         if (activeFilters.service || activeFilters.location || activeFilters.minPrice || activeFilters.maxPrice || activeFilters.minRating) return 'Filtered Results';
-        return 'All Available Workers';
+        return 'All Available Professionals';
     }, [activeFilters]);
 
     const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -442,7 +470,31 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user, allClean
 
     return (
         <div className="p-4 sm:p-8 container mx-auto">
-             
+
+             {/* PWA Install Banner */}
+             {installPrompt && !isAppInstalled && showInstallBanner && (
+                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 mb-6 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                     <span className="text-3xl flex-shrink-0">📲</span>
+                     <div className="flex-grow">
+                         <h3 className="font-bold text-blue-900 text-sm sm:text-base">Install Skills Konnect on Your Device</h3>
+                         <p className="text-xs sm:text-sm text-blue-700 mt-0.5">Get faster access, work offline, and enjoy a full app experience — no app store needed. One click to install on your phone or desktop!</p>
+                     </div>
+                     <div className="flex items-center gap-2 flex-shrink-0">
+                         <button
+                             onClick={handleInstallClick}
+                             className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-secondary transition-colors whitespace-nowrap"
+                         >
+                             📲 Install App
+                         </button>
+                         <button
+                             onClick={() => setShowInstallBanner(false)}
+                             className="text-blue-400 hover:text-blue-600 text-lg leading-none p-1"
+                             aria-label="Dismiss"
+                         >✕</button>
+                     </div>
+                 </div>
+             )}
+
              {/* Profile Header with Name, Email, and Upgrade Banner */}
              <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-6">
                 <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
@@ -510,10 +562,10 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user, allClean
 
             <div className="border-b border-gray-200 mb-6 overflow-x-auto">
                 <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-                    {/* Only show Find a Worker tab if profile is complete */}
+                    {/* Only show Find a Professional tab if profile is complete */}
                     {!isProfileIncomplete && (
                         <button onClick={() => setActiveTab('find')} className={`${activeTab === 'find' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}>
-                            Find a Worker
+                            Find a Professional
                         </button>
                     )}
                     <button onClick={() => setActiveTab('bookings')} className={`${activeTab === 'bookings' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}>
@@ -578,7 +630,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user, allClean
             {activeTab === 'find' && !isProfileIncomplete && (
                 <div>
                      <div className="bg-white p-6 rounded-lg shadow-md">
-                        <h2 className="text-lg font-bold mb-4">Search Workers</h2>
+                        <h2 className="text-lg font-bold mb-4">Search Professionals</h2>
                         <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
                                 <div className="md:col-span-1">
@@ -700,7 +752,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user, allClean
                                 {displayedCleaners.map(cleaner => (<CleanerCard key={cleaner.id} cleaner={cleaner} onClick={() => onSelectCleaner(cleaner)} />))}
                             </div>
                         ) : !appError ? (
-                            <p className="mt-4 text-gray-500 bg-white p-6 rounded-lg shadow-sm">No workers found matching your criteria.</p>
+                            <p className="mt-4 text-gray-500 bg-white p-6 rounded-lg shadow-sm">No professionals found matching your criteria.</p>
                         ) : null }
                     </div>
                 </div>
@@ -743,7 +795,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user, allClean
                                             onClick={() => handleMessageCleaner(item.cleanerId, item.cleanerName)}
                                             className="w-full sm:w-auto text-center bg-gray-100 text-primary px-3 py-1.5 rounded-md text-xs font-semibold hover:bg-gray-200 border border-gray-200"
                                          >
-                                            Message Worker
+                                            Message Professional
                                          </button>
 
                                          {item.status === 'Upcoming' && <button onClick={() => setBookingToCancel(item)} className="w-full sm:w-auto text-center bg-red-100 text-red-700 px-3 py-1.5 rounded-md text-xs font-semibold hover:bg-red-200">Cancel Booking</button>}
@@ -758,7 +810,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user, allClean
                                 )})}
                         </ul>
                     ) : (
-                        <p className="text-sm text-gray-500 py-2">No bookings yet. Time to find a worker!</p>
+                        <p className="text-sm text-gray-500 py-2">No bookings yet. Time to find a professional!</p>
                     )}
                 </div>
             )}
@@ -777,8 +829,8 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user, allClean
                                 <div className="ml-4 flex-1">
                                     <h3 className="text-lg font-semibold text-purple-900">Subscribe to Post Jobs</h3>
                                     <p className="mt-2 text-sm text-purple-800">
-                                        To post job listings and connect with skilled workers, you need an active subscription. 
-                                        <span className="font-semibold"> Note: </span>All clients can search and book workers directly without subscription.
+                                        To post job listings and connect with skilled professionals, you need an active subscription. 
+                                        <span className="font-semibold"> Note: </span>All clients can search and book professionals directly without subscription.
                                     </p>
                                     <button
                                         onClick={() => onNavigate('subscription')}
@@ -902,13 +954,13 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user, allClean
                                         };
                                         onUpdateUser(updatedUser);
                                         
-                                        // Immediately refresh jobs so Worker/Admin dashboards see the new job
+                                        // Immediately refresh jobs so Professional/Admin dashboards see the new job
                                         if (onRefreshJobs) {
                                             await onRefreshJobs();
                                         }
                                         
                                         formEl.reset();
-                                        alert('Job posted successfully! Workers will be able to apply.');
+                                        alert('Job posted successfully! Professionals will be able to apply.');
                                     } catch (error: any) {
                                         alert(error.message || 'Failed to post job. Please try again.');
                                     }
@@ -1066,7 +1118,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user, allClean
                                 <BriefcaseIcon className="w-16 h-16 mx-auto text-gray-400 mb-4" />
                                 <p className="text-gray-500">No jobs posted yet.</p>
                                 {user.subscriptionTier && user.subscriptionTier !== 'Free' && (
-                                    <p className="text-sm text-gray-400 mt-2">Post your first job above to connect with skilled workers!</p>
+                                    <p className="text-sm text-gray-400 mt-2">Post your first job above to connect with skilled professionals!</p>
                                 )}
                             </div>
                         );
@@ -1221,7 +1273,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user, allClean
                                 <span className="text-2xl flex-shrink-0">✨</span>
                                 <div className="flex-1 min-w-0">
                                     <p className="text-sm font-semibold text-blue-900">Upgrade to unlock more features</p>
-                                    <p className="text-sm text-blue-700 mt-0.5">You're on the Free Plan. Upgrade to post more jobs, access premium verified workers, and enjoy priority support.</p>
+                                    <p className="text-sm text-blue-700 mt-0.5">You're on the Free Plan. Upgrade to post more jobs, access premium verified professionals, and enjoy priority support.</p>
                                     <button onClick={() => onNavigate('subscription')} className="mt-2 text-xs font-bold text-blue-600 hover:underline">View Plans →</button>
                                 </div>
                                 <span className="text-xs text-gray-400 flex-shrink-0">Today</span>
@@ -1232,7 +1284,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user, allClean
                                 <span className="text-2xl flex-shrink-0">📋</span>
                                 <div className="flex-1 min-w-0">
                                     <p className="text-sm font-semibold text-orange-900">Complete your profile</p>
-                                    <p className="text-sm text-orange-700 mt-0.5">Your profile is incomplete. Fill in your details to start searching for workers and posting jobs.</p>
+                                    <p className="text-sm text-orange-700 mt-0.5">Your profile is incomplete. Fill in your details to start searching for professionals and posting jobs.</p>
                                     <button onClick={() => setActiveTab('profile')} className="mt-2 text-xs font-bold text-orange-600 hover:underline">Complete Profile →</button>
                                 </div>
                                 <span className="text-xs text-gray-400 flex-shrink-0">Today</span>
@@ -1254,7 +1306,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user, allClean
                                 <span className="text-2xl flex-shrink-0">✅</span>
                                 <div className="flex-1 min-w-0">
                                     <p className="text-sm font-semibold text-green-900">You're all set!</p>
-                                    <p className="text-sm text-green-700 mt-0.5">Your account is verified and active. Start searching for workers or post a job to find the right professional for your needs.</p>
+                                    <p className="text-sm text-green-700 mt-0.5">Your account is verified and active. Start searching for professionals or post a job to find the right professional for your needs.</p>
                                 </div>
                                 <span className="text-xs text-gray-400 flex-shrink-0">Today</span>
                             </div>
