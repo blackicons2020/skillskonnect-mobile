@@ -231,16 +231,19 @@ const App: React.FC = () => {
             const tokenAtStart = getStoredToken();
 
             if (tokenAtStart) {
-                // Fetch everything needed in one parallel batch
-                const [cleaners, jobs, meResult, bookingsResult] = await Promise.allSettled([
-                    apiService.getAllCleaners(),
-                    apiService.getAllJobs(),
+                // Fetch session critical data first; public data loads in background
+                const [meResult, bookingsResult] = await Promise.allSettled([
                     apiService.getMe(),
                     apiService.getBookings(),
                 ]);
-
-                if (cleaners.status === 'fulfilled') setAllCleaners(cleaners.value);
-                if (jobs.status === 'fulfilled') setAllJobs(jobs.value as any);
+                // Kick off public data in background — don't block session restore
+                Promise.allSettled([
+                    apiService.getAllCleaners(),
+                    apiService.getAllJobs(),
+                ]).then(([cleaners, jobs]) => {
+                    if (cleaners.status === 'fulfilled') setAllCleaners(cleaners.value);
+                    if (jobs.status === 'fulfilled') setAllJobs(jobs.value as any);
+                });
 
                 // Guard 1: abort if a fresh login started while we were fetching
                 // (the login stores a new token before calling handleAuthSuccess)
@@ -277,13 +280,16 @@ const App: React.FC = () => {
                     }
                 }
             } else {
-                // Not logged in — only load public data
-                const [cleaners, jobs] = await Promise.allSettled([
+                // Not logged in — show landing immediately, load public data in background
+                setIsLoading(false);
+                Promise.allSettled([
                     apiService.getAllCleaners(),
                     apiService.getAllJobs(),
-                ]);
-                if (cleaners.status === 'fulfilled') setAllCleaners(cleaners.value);
-                if (jobs.status === 'fulfilled') setAllJobs(jobs.value as any);
+                ]).then(([cleaners, jobs]) => {
+                    if (cleaners.status === 'fulfilled') setAllCleaners(cleaners.value);
+                    if (jobs.status === 'fulfilled') setAllJobs(jobs.value as any);
+                });
+                return;
             }
 
             setIsLoading(false);

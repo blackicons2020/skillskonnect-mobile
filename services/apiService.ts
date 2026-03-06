@@ -64,6 +64,13 @@ const handleResponse = async (response: Response) => {
     return response.json();
 };
 
+/** Fetch with a timeout. Throws if the request takes longer than `ms` milliseconds. */
+const fetchWithTimeout = (url: string, options: RequestInit = {}, ms = 12000): Promise<Response> => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), ms);
+    return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timer));
+};
+
 const fileToBase64 = async (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -99,11 +106,11 @@ const fileToBase64 = async (file: File): Promise<string> => {
 
 export const apiService = {
     login: async (email: string, password?: string): Promise<{ token: string; user: User }> => {
-        const response = await fetch(`${API_URL}/auth/login`, {
+        const response = await fetchWithTimeout(`${API_URL}/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password }),
-        });
+        }, 15000);
         return handleResponse(response);
     },
 
@@ -160,26 +167,26 @@ export const apiService = {
     },
     
     getMe: async (): Promise<User> => {
-        const response = await fetch(`${API_URL}/users/me`, {
+        const response = await fetchWithTimeout(`${API_URL}/users/me`, {
             method: 'GET',
             headers: getHeaders(),
-        });
+        }, 10000);
         return handleResponse(response);
     },
 
     getAllCleaners: async (): Promise<Cleaner[]> => {
-        const response = await fetch(`${API_URL}/cleaners`, {
+        const response = await fetchWithTimeout(`${API_URL}/cleaners`, {
             method: 'GET',
             headers: { 'Content-Type': 'application/json' },
-        });
+        }, 12000);
         return handleResponse(response);
     },
 
     getAllJobs: async (): Promise<Job[]> => {
-        const response = await fetch(`${API_URL}/jobs`, {
+        const response = await fetchWithTimeout(`${API_URL}/jobs`, {
             method: 'GET',
             headers: getHeaders(),
-        });
+        }, 12000);
         return handleResponse(response);
     },
 
