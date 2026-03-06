@@ -359,7 +359,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onNavi
                                     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
                                         user.userType?.includes('Client') ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
                                     }`}>
-                                        {user.userType || 'User'}
+                                        {user.userType ? user.userType.replace(/Worker/g, 'Professional') : 'User'}
                                     </span>
                                     <span className="text-gray-300">|</span>
                                     <span>{user.email}</span>
@@ -408,16 +408,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onNavi
             <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
             {/* PWA Install Banner */}
-            {installPrompt && !isAppInstalled && showInstallBanner && (
+            {!isAppInstalled && showInstallBanner && (
                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 mb-6 flex flex-col sm:flex-row items-start sm:items-center gap-4">
                     <span className="text-3xl flex-shrink-0">📲</span>
                     <div className="flex-grow">
                         <h3 className="font-bold text-blue-900 text-sm sm:text-base">Install Skills Konnect on Your Device</h3>
-                        <p className="text-xs sm:text-sm text-blue-700 mt-0.5">Get faster access, work offline, and enjoy a full app experience — no app store needed. One click to install on your phone or desktop!</p>
+                        <p className="text-xs sm:text-sm text-blue-700 mt-0.5">Get faster access, work offline, and enjoy a full app experience — no app store needed. Tap <strong>Install App</strong> to add it to your device!</p>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                         <button
-                            onClick={handleInstallClick}
+                            onClick={installPrompt ? handleInstallClick : () => alert('To install: open this page in Chrome or Safari, then use the browser menu → “Add to Home Screen” or “Install App”.')}
                             className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-secondary transition-colors whitespace-nowrap"
                         >
                             📲 Install App

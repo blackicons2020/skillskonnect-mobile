@@ -472,16 +472,16 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user, allClean
         <div className="p-4 sm:p-8 container mx-auto">
 
              {/* PWA Install Banner */}
-             {installPrompt && !isAppInstalled && showInstallBanner && (
+             {!isAppInstalled && showInstallBanner && (
                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 mb-6 flex flex-col sm:flex-row items-start sm:items-center gap-4">
                      <span className="text-3xl flex-shrink-0">📲</span>
                      <div className="flex-grow">
                          <h3 className="font-bold text-blue-900 text-sm sm:text-base">Install Skills Konnect on Your Device</h3>
-                         <p className="text-xs sm:text-sm text-blue-700 mt-0.5">Get faster access, work offline, and enjoy a full app experience — no app store needed. One click to install on your phone or desktop!</p>
+                         <p className="text-xs sm:text-sm text-blue-700 mt-0.5">Get faster access, work offline, and enjoy a full app experience — no app store needed. Tap <strong>Install App</strong> to add it to your device!</p>
                      </div>
                      <div className="flex items-center gap-2 flex-shrink-0">
                          <button
-                             onClick={handleInstallClick}
+                             onClick={installPrompt ? handleInstallClick : () => alert('To install: open this page in Chrome or Safari, then use the browser menu → “Add to Home Screen” or “Install App”.')}
                              className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-secondary transition-colors whitespace-nowrap"
                          >
                              📲 Install App
@@ -522,7 +522,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user, allClean
                         <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-2">
                             {user.userType && (
                                 <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
-                                    {user.userType}
+                                    {user.userType.replace(/Worker/g, 'Professional')}
                                 </span>
                             )}
                             {user.isVerified && (
