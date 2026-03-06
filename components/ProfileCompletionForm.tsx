@@ -98,6 +98,34 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
   const countryCurrencySymbol = getCountryCurrency((formData.country as string) || 'Nigeria').symbol;
   const isNegotiable = formData.chargeRateType === 'Not Fixed';
 
+  // Countries in Africa, Asia, and South America — charge per day field is hidden for workers
+  const REMOVE_DAILY_CHARGE_COUNTRIES = new Set([
+    // Africa
+    'Nigeria', 'South Africa', 'Kenya', 'Tanzania', 'Uganda', 'Rwanda', 'Ethiopia',
+    'Ghana', 'Zimbabwe', 'Zambia', 'Mozambique', 'Namibia', 'Botswana',
+    'Malawi', 'Madagascar', 'Mauritius', 'Seychelles',
+    'Cameroon', 'Ivory Coast', 'Senegal', 'Mali', 'Burkina Faso', 'Niger',
+    'Togo', 'Benin', 'Guinea-Bissau', 'Guinea', 'Chad', 'Gabon',
+    'Congo (Republic)', 'Congo (DRC)', 'Equatorial Guinea', 'Central African Republic',
+    'Angola', 'Liberia', 'Sierra Leone', 'Gambia', 'Eswatini', 'Lesotho',
+    'Djibouti', 'Eritrea', 'Somalia', 'Comoros', 'Cape Verde', 'Burundi',
+    'Egypt', 'Morocco', 'Tunisia', 'Algeria', 'Libya', 'Sudan', 'South Sudan',
+    // Asia (South, East, Southeast, Central, Middle East)
+    'India', 'Pakistan', 'Bangladesh', 'Sri Lanka', 'Nepal', 'Bhutan',
+    'Philippines', 'Indonesia', 'Vietnam', 'Thailand', 'Malaysia', 'Myanmar',
+    'Cambodia', 'Laos', 'Timor-Leste', 'Mongolia', 'China',
+    'Jordan', 'Palestine', 'Lebanon', 'Iraq', 'Iran', 'Syria', 'Yemen', 'Turkey',
+    'Kazakhstan', 'Kyrgyzstan', 'Tajikistan', 'Uzbekistan', 'Turkmenistan',
+    // South America / Latin America / Caribbean
+    'Mexico', 'Brazil', 'Colombia', 'Argentina', 'Chile', 'Peru', 'Venezuela',
+    'Bolivia', 'Ecuador', 'Paraguay', 'Uruguay', 'Guyana', 'Suriname',
+    'Costa Rica', 'Panama', 'Guatemala', 'Honduras', 'El Salvador', 'Nicaragua',
+    'Dominican Republic', 'Jamaica', 'Trinidad and Tobago', 'Haiti', 'Cuba',
+  ]);
+  const effectivePricingModel = (pricingModel === 'daily' && REMOVE_DAILY_CHARGE_COUNTRIES.has((formData.country as string) || ''))
+    ? 'negotiable'
+    : pricingModel;
+
   return (
     <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 max-w-4xl mx-auto">
       <div className="bg-gradient-to-r from-blue-600 to-indigo-700 px-8 py-6">
@@ -411,7 +439,7 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
                   <h4 className="font-semibold text-gray-900 mb-4">Pricing Configuration</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Rate input — shown per country pricing convention */}
-                    {pricingModel === 'hourly' && (
+                    {effectivePricingModel === 'hourly' && (
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Hourly Rate ({countryCurrencySymbol}) {!isNegotiable && <span className="text-red-500">*</span>}
@@ -429,7 +457,7 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
                         />
                       </div>
                     )}
-                    {pricingModel === 'daily' && (
+                    {effectivePricingModel === 'daily' && (
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Daily Rate ({countryCurrencySymbol}) {!isNegotiable && <span className="text-red-500">*</span>}
@@ -447,7 +475,7 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
                         />
                       </div>
                     )}
-                    {pricingModel === 'negotiable' && (
+                    {effectivePricingModel === 'negotiable' && (
                       <div className="md:col-span-2">
                         <div className="flex items-start gap-3 p-4 bg-amber-50 rounded-lg border border-amber-200">
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-amber-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -461,7 +489,7 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
                     )}
 
                     {/* Negotiable toggle (available for hourly and daily countries too) */}
-                    {pricingModel !== 'negotiable' && (
+                    {effectivePricingModel !== 'negotiable' && (
                       <div className="flex items-center h-full pt-4 md:pt-8">
                         <label className="flex items-center gap-3 cursor-pointer group">
                           <div className="relative flex items-center">
@@ -487,63 +515,62 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
                   </div>
                 </div>
 
-                {/* Profile Picture Upload */}
-                <div className="bg-white border rounded-xl overflow-hidden">
-                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-gray-100">
-                    <h4 className="font-semibold text-gray-800">Profile Photo</h4>
-                    <p className="text-sm text-gray-500 mt-1">First impressions matter. Upload a clear photo.</p>
-                  </div>
-                  
-                  <div className="p-6">
-                    <div className="flex flex-col md:flex-row gap-6 items-center">
-                      <div className="flex-shrink-0">
-                        {formData.profilePicture ? (
-                          <div className="relative group">
-                            <img
-                              src={formData.profilePicture}
-                              alt="Profile Preview"
-                              className="w-32 h-32 object-cover rounded-full border-4 border-white shadow-md ring-1 ring-gray-200"
-                            />
-                            <div className="absolute inset-0 bg-black/30 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                              <span className="text-white text-xs font-medium">Change</span>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="w-32 h-32 bg-gray-100 rounded-full flex items-center justify-center border-2 border-dashed border-gray-300">
-                            <svg className="w-12 h-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                            </svg>
-                          </div>
-                        )}
-                      </div>
-                      
-                      <div className="flex-1 w-full">
-                        <div className="border-2 border-dashed border-blue-200 rounded-lg p-6 text-center hover:bg-blue-50 transition-all cursor-pointer bg-blue-50/30">
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) handleFileUpload('profilePicture', file);
-                            }}
-                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                            // If no picture, make it required visually or functionally
-                            // But maybe we don't want to force it if editing
-                          />
-                          <div className="relative z-0 pointer-events-none">
-                            <svg className="mx-auto h-10 w-10 text-blue-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                            <p className="text-sm font-semibold text-blue-600">Click to upload photo</p>
-                            <p className="text-xs text-gray-500 mt-1">MAX 2MB • JPG, PNG</p>
-                          </div>
+              </div>
+            )}
+
+            {/* Upload Profile Picture */}
+            <div className="bg-white border rounded-xl overflow-hidden">
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-gray-100">
+                <h4 className="font-semibold text-gray-800">Upload Profile Picture</h4>
+                <p className="text-sm text-gray-500 mt-1">First impressions matter. Upload a clear photo.</p>
+              </div>
+
+              <div className="p-6">
+                <div className="flex flex-col md:flex-row gap-6 items-center">
+                  <div className="flex-shrink-0">
+                    {formData.profilePicture ? (
+                      <div className="relative group">
+                        <img
+                          src={formData.profilePicture}
+                          alt="Profile Preview"
+                          className="w-32 h-32 object-cover rounded-full border-4 border-white shadow-md ring-1 ring-gray-200"
+                        />
+                        <div className="absolute inset-0 bg-black/30 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <span className="text-white text-xs font-medium">Change</span>
                         </div>
+                      </div>
+                    ) : (
+                      <div className="w-32 h-32 bg-gray-100 rounded-full flex items-center justify-center border-2 border-dashed border-gray-300">
+                        <svg className="w-12 h-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex-1 w-full">
+                    <div className="border-2 border-dashed border-blue-200 rounded-lg p-6 text-center hover:bg-blue-50 transition-all cursor-pointer bg-blue-50/30">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleFileUpload('profilePicture', file);
+                        }}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                      />
+                      <div className="relative z-0 pointer-events-none">
+                        <svg className="mx-auto h-10 w-10 text-blue-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <p className="text-sm font-semibold text-blue-600">Click to upload photo</p>
+                        <p className="text-xs text-gray-500 mt-1">MAX 2MB • JPG, PNG</p>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
-            )}
+            </div>
 
             {error && (
               <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl flex items-start gap-3">
