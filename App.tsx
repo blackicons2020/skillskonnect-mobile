@@ -36,12 +36,9 @@ interface CleanerProfileProps {
     onBook: (cleaner: Cleaner) => void;
 }
 
-const CleanerProfile: React.FC<CleanerProfileProps> = ({ cleaner, onNavigate, onBook }) => {
+const CleanerProfile: React.FC<CleanerProfileProps> = ({ cleaner, onBook }) => {
     return (
         <div className="p-8 container mx-auto">
-            <button onClick={() => onNavigate('searchResults')} className="text-primary mb-4 font-semibold hover:underline flex items-center gap-1">
-                <span>&larr;</span> Back to Results
-            </button>
             <div className="bg-white p-6 rounded-lg shadow-lg">
                 <img src={cleaner.photoUrl} alt={cleaner.name} className="w-32 h-32 rounded-full mx-auto object-cover mb-4 ring-4 ring-primary/20" />
                 <h2 className="text-3xl font-bold text-center">{cleaner.name}</h2>
@@ -670,6 +667,23 @@ const App: React.FC = () => {
         }
     };
 
+    // Views that should show a back link below the header
+    const withBack = (label: string, content: React.ReactNode) => (
+        viewHistory.length > 0 ? (
+            <>
+                <div className="container mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+                    <button
+                        onClick={handleGoBack}
+                        className="text-primary font-semibold hover:underline flex items-center gap-1 text-sm"
+                    >
+                        <span>&larr;</span> {label}
+                    </button>
+                </div>
+                {content}
+            </>
+        ) : content
+    );
+
     const renderContent = () => {
         if (isLoading) {
             return <LoadingSpinner />;
@@ -677,14 +691,14 @@ const App: React.FC = () => {
 
         switch (view) {
             case 'auth':
-                return <Auth
+                return withBack('Back', <Auth
                     initialTab={initialAuthTab}
                     onNavigate={handleNavigate}
                     onLoginAttempt={handleLoginAttempt}
                     onSignup={handleDirectSignup}
                     authMessage={authMessage}
                     onAuthMessageDismiss={() => setAuthMessage(null)}
-                />;
+                />);
             case 'clientDashboard':
                 // Only clients can access client dashboard
                 if (user && ((user as any).userType === 'client' || user.role === 'client')) {
@@ -737,39 +751,39 @@ const App: React.FC = () => {
                 return null;
             case 'cleanerProfile':
                 if (selectedCleaner) {
-                    return <CleanerProfile cleaner={selectedCleaner} onNavigate={handleNavigate} onBook={handleStartBookingProcess} />;
+                    return withBack('Back to Results', <CleanerProfile cleaner={selectedCleaner} onNavigate={handleNavigate} onBook={handleStartBookingProcess} />);
                 }
                 handleNavigate('landing');
                 return null;
             case 'subscription':
                 if (user) {
-                    return <SubscriptionPage
+                    return withBack('Back', <SubscriptionPage
                         user={user}
                         onSelectPlan={handleUpgradeRequest}
-                    />;
+                    />);
                 }
                 handleNavigate('landing');
                 return null;
             case 'searchResults':
-                return <SearchResultsPage
+                return withBack('Back', <SearchResultsPage
                     allCleaners={allCleaners}
                     user={user}
                     onSelectCleaner={handleSelectCleaner}
                     initialFilters={initialFilters}
                     clearInitialFilters={() => setInitialFilters(null)}
                     appError={appError}
-                />;
+                />);
             case 'resetPassword':
-                return <ResetPasswordPage
+                return withBack('Back', <ResetPasswordPage
                     token={resetToken || ''}
                     onNavigate={handleNavigate}
-                />;
-            case 'about': return <AboutPage />;
-            case 'servicesPage': return <ServicesPage />;
-            case 'help': return <HelpCenterPage onNavigate={handleNavigate} />;
-            case 'contact': return <ContactPage />;
-            case 'terms': return <TermsPage />;
-            case 'privacy': return <PrivacyPage />;
+                />);
+            case 'about': return withBack('Back', <AboutPage />);
+            case 'servicesPage': return withBack('Back', <ServicesPage />);
+            case 'help': return withBack('Back', <HelpCenterPage onNavigate={handleNavigate} />);
+            case 'contact': return withBack('Back', <ContactPage />);
+            case 'terms': return withBack('Back', <TermsPage />);
+            case 'privacy': return withBack('Back', <PrivacyPage />);
             case 'landing':
             default:
                 return <LandingPage
@@ -786,7 +800,7 @@ const App: React.FC = () => {
     return (
         <div className="min-h-screen flex flex-col font-sans bg-light">
             <ErrorBoundary>
-                <Header user={user} currentView={view} onNavigate={handleNavigate} onGoBack={viewHistory.length > 0 ? handleGoBack : undefined} onLogout={handleLogout} onNavigateToAuth={handleNavigateToAuth} />
+                <Header user={user} onNavigate={handleNavigate} onLogout={handleLogout} onNavigateToAuth={handleNavigateToAuth} />
                 <main className="flex-grow">
                     <Suspense fallback={<LoadingSpinner />}>
                         {renderContent()}
