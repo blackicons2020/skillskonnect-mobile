@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { FacebookIcon, InstagramIcon, YouTubeIcon, TikTokIcon, XIcon } from './icons';
 import { View } from '../types';
 
@@ -8,6 +8,34 @@ interface FooterProps {
 }
 
 export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
+    const [installPrompt, setInstallPrompt] = useState<any>(null);
+    const [isAppInstalled, setIsAppInstalled] = useState(false);
+
+    useEffect(() => {
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+            setIsAppInstalled(true);
+        }
+        const handler = (e: Event) => {
+            e.preventDefault();
+            setInstallPrompt(e);
+        };
+        window.addEventListener('beforeinstallprompt', handler);
+        window.addEventListener('appinstalled', () => setIsAppInstalled(true));
+        return () => {
+            window.removeEventListener('beforeinstallprompt', handler);
+        };
+    }, []);
+
+    const handleInstallClick = async () => {
+        if (!installPrompt) return;
+        await installPrompt.prompt();
+        const choice = await installPrompt.userChoice;
+        if (choice.outcome === 'accepted') {
+            setInstallPrompt(null);
+            setIsAppInstalled(true);
+        }
+    };
+
     const footerLinks = {
         company: [
             { name: 'About Us', view: 'about' as View },
@@ -26,7 +54,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
     return (
         <footer className="bg-white border-t mt-auto">
             <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
+                <div className="grid grid-cols-2 md:grid-cols-6 gap-8">
                     <div className="col-span-2 md:col-span-2">
                          <div className="flex items-center gap-3 font-bold text-primary" style={{ fontSize: '22px' }}>
                             <img src="/footer-logo.jpg" alt="Skills Konnect" className="h-8 w-8 rounded-md" />
@@ -72,6 +100,26 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                             ))}
                         </ul>
                     </div>
+                    {!isAppInstalled && (
+                        <div>
+                            <h3 className="text-sm font-semibold text-dark tracking-wider uppercase">Get&nbsp;The&nbsp;App</h3>
+                            <div className="mt-4">
+                                <button
+                                    onClick={handleInstallClick}
+                                    disabled={!installPrompt}
+                                    className="flex flex-col items-center gap-1 group disabled:opacity-50 disabled:cursor-not-allowed"
+                                    title="Install Skills Konnect on your device"
+                                >
+                                    <span className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary text-white shadow-md group-hover:bg-secondary group-disabled:bg-gray-400 transition-colors">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v12m0 0l-4-4m4 4l4-4" />
+                                        </svg>
+                                    </span>
+                                    <span className="text-xs text-gray-500 text-center leading-tight max-w-[80px]">Click to Install app in device</span>
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 <div className="mt-12 border-t pt-8 flex flex-col sm:flex-row justify-between items-center">

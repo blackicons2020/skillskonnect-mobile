@@ -58,33 +58,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onNavi
     );
     const [showProfileCompletion, setShowProfileCompletion] = useState(false);
 
-    // PWA install prompt
-    const [installPrompt, setInstallPrompt] = useState<any>(null);
-    const [isAppInstalled, setIsAppInstalled] = useState(false);
-    const [showInstallBanner, setShowInstallBanner] = useState(true);
-
-    useEffect(() => {
-        const handler = (e: Event) => {
-            e.preventDefault();
-            setInstallPrompt(e);
-        };
-        window.addEventListener('beforeinstallprompt', handler);
-        window.addEventListener('appinstalled', () => setIsAppInstalled(true));
-        if (window.matchMedia('(display-mode: standalone)').matches) {
-            setIsAppInstalled(true);
-        }
-        return () => window.removeEventListener('beforeinstallprompt', handler);
-    }, []);
-
-    const handleInstallClick = async () => {
-        if (!installPrompt) return;
-        await installPrompt.prompt();
-        const choice = await installPrompt.userChoice;
-        if (choice.outcome === 'accepted') {
-            setInstallPrompt(null);
-            setIsAppInstalled(true);
-        }
-    };
+    // PWA install prompt - removed (handled in Footer)
     const [chatToOpen, setChatToOpen] = useState<string | null>(null);
 
     // Handler for profile updates
@@ -406,30 +380,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onNavi
 
             {/* Main Content Area */}
             <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
-            {/* PWA Install Banner */}
-            {!isAppInstalled && showInstallBanner && (
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 mb-6 flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                    <span className="text-3xl flex-shrink-0">📲</span>
-                    <div className="flex-grow">
-                        <h3 className="font-bold text-blue-900 text-sm sm:text-base">Install Skills Konnect on Your Device</h3>
-                        <p className="text-xs sm:text-sm text-blue-700 mt-0.5">Get faster access, work offline, and enjoy a full app experience — no app store needed. Tap <strong>Install App</strong> to add it to your device!</p>
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                        <button
-                            onClick={installPrompt ? handleInstallClick : () => alert('To install: open this page in Chrome or Safari, then use the browser menu → “Add to Home Screen” or “Install App”.')}
-                            className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-secondary transition-colors whitespace-nowrap"
-                        >
-                            📲 Install App
-                        </button>
-                        <button
-                            onClick={() => setShowInstallBanner(false)}
-                            className="text-blue-400 hover:text-blue-600 text-lg leading-none p-1"
-                            aria-label="Dismiss"
-                        >✕</button>
-                    </div>
-                </div>
-            )}
 
             {/* Alert for incomplete profile */}
             {isProfileIncomplete && (
