@@ -80,6 +80,7 @@ const LoadingSpinner = () => (
 
 const App: React.FC = () => {
     const [view, setView] = useState<View>('landing');
+    const [viewHistory, setViewHistory] = useState<View[]>([]);
     const [user, setUser] = useState<User | null>(null);
     const [allUsers, setAllUsers] = useState<User[]>([]);
     const [allCleaners, setAllCleaners] = useState<Cleaner[]>([]);
@@ -285,11 +286,23 @@ const App: React.FC = () => {
     }, []);
 
     const handleNavigate = (targetView: View) => {
+        setViewHistory(prev => [...prev, view]); // push current view onto history stack
         setView(targetView);
         window.scrollTo(0, 0);
         // Reset dashboard tab to default when navigating normally
         if (targetView === 'clientDashboard') setDashboardInitialTab('find');
         if (targetView === 'cleanerDashboard') setDashboardInitialTab('jobs');
+    };
+
+    const handleGoBack = () => {
+        setViewHistory(prev => {
+            if (prev.length === 0) return prev;
+            const newHistory = [...prev];
+            const previousView = newHistory.pop()!;
+            setView(previousView);
+            window.scrollTo(0, 0);
+            return newHistory;
+        });
     };
 
     const handleNavigateToAuth = (tab: 'login' | 'signup') => {
@@ -427,6 +440,7 @@ const App: React.FC = () => {
         setUser(null);
         setAllUsers([]);
         clearToken();
+        setViewHistory([]);
         setCleanerToRememberForBooking(null);
         handleNavigate('landing');
     };
@@ -772,7 +786,7 @@ const App: React.FC = () => {
     return (
         <div className="min-h-screen flex flex-col font-sans bg-light">
             <ErrorBoundary>
-                <Header user={user} onNavigate={handleNavigate} onLogout={handleLogout} onNavigateToAuth={handleNavigateToAuth} />
+                <Header user={user} currentView={view} onNavigate={handleNavigate} onGoBack={viewHistory.length > 0 ? handleGoBack : undefined} onLogout={handleLogout} onNavigateToAuth={handleNavigateToAuth} />
                 <main className="flex-grow">
                     <Suspense fallback={<LoadingSpinner />}>
                         {renderContent()}

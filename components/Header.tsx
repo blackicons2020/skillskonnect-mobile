@@ -6,12 +6,17 @@ import { apiService } from '../services/apiService';
 
 interface HeaderProps {
   user: User | null;
+  currentView?: View;
   onNavigate: (view: View) => void;
   onNavigateToAuth: (tab: 'login' | 'signup') => void;
   onLogout: () => void;
+  onGoBack?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ user, onNavigate, onLogout, onNavigateToAuth }) => {
+// Views where the back button should NOT appear (root/home pages)
+const ROOT_VIEWS: View[] = ['landing', 'clientDashboard', 'cleanerDashboard', 'adminDashboard'];
+
+export const Header: React.FC<HeaderProps> = ({ user, currentView, onNavigate, onLogout, onNavigateToAuth, onGoBack }) => {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const bellRef = useRef<HTMLDivElement>(null);
@@ -75,14 +80,28 @@ export const Header: React.FC<HeaderProps> = ({ user, onNavigate, onLogout, onNa
     <header className="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-50">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center py-4">
-          <div 
-            className="flex items-center gap-2 text-2xl font-bold text-primary cursor-pointer"
-            onClick={() => onNavigate('landing')}
-          >
-            <div className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center overflow-hidden flex-shrink-0">
-              <img src="/sk_logo.jpg" alt="Skills Konnect" className="h-full w-full object-cover" />
+          {/* Left side: back arrow (when applicable) + logo */}
+          <div className="flex items-center gap-2">
+            {onGoBack && currentView && !ROOT_VIEWS.includes(currentView) && (
+              <button
+                onClick={onGoBack}
+                className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-gray-100 text-gray-600 hover:text-primary transition-colors"
+                aria-label="Go back"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+            )}
+            <div
+              className="flex items-center gap-2 text-xl font-bold text-primary cursor-pointer"
+              onClick={() => onNavigate('landing')}
+            >
+              <div className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center overflow-hidden flex-shrink-0">
+                <img src="/sk_logo.jpg" alt="Skills Konnect" className="h-full w-full object-cover" />
+              </div>
+              <span>Skills Konnect</span>
             </div>
-            <span>Skills Konnect</span>
           </div>
           <div className="flex items-center space-x-3 sm:space-x-4">
             {user ? (
