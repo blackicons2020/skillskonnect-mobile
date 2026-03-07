@@ -54,8 +54,8 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
     return (
         <footer className="bg-white border-t mt-auto">
             <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-                    <div className="col-span-2 md:col-span-1">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
+                    <div className="col-span-2 md:col-span-2">
                          <div className="flex items-center gap-3 font-bold text-primary" style={{ fontSize: '22px' }}>
                             <span>Skills Konnect</span>
                         </div>
