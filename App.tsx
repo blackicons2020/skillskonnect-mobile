@@ -150,6 +150,13 @@ const App: React.FC = () => {
             setIsLoading(true);
             setAppError(null);
 
+            // Detect direct /privacy URL
+            if (window.location.pathname === '/privacy') {
+                setView('privacy');
+                setIsLoading(false);
+                return;
+            }
+
             // Detect password-reset link: ?action=resetPassword&token=<raw>
             const urlParams = new URLSearchParams(window.location.search);
             const action = urlParams.get('action');
@@ -295,6 +302,12 @@ const App: React.FC = () => {
         setViewHistory(prev => [...prev, view]); // push current view onto history stack
         setView(targetView);
         window.scrollTo(0, 0);
+        // Sync URL for the Privacy Policy page
+        if (targetView === 'privacy') {
+            window.history.pushState({}, document.title, '/privacy');
+        } else if (view === 'privacy') {
+            window.history.replaceState({}, document.title, '/');
+        }
         // Reset dashboard tab to default when navigating normally
         if (targetView === 'clientDashboard') setDashboardInitialTab('find');
         if (targetView === 'cleanerDashboard') setDashboardInitialTab('jobs');
@@ -305,6 +318,10 @@ const App: React.FC = () => {
         const previousView = viewHistory[viewHistory.length - 1];
         setViewHistory(prev => prev.slice(0, -1));
         setView(previousView);
+        // Restore base URL when leaving the Privacy page
+        if (view === 'privacy') {
+            window.history.replaceState({}, document.title, '/');
+        }
         window.scrollTo(0, 0);
     };
 
