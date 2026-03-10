@@ -549,7 +549,7 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
                   </div>
 
                   <div className="flex-1 w-full">
-                    <div className="border-2 border-dashed border-blue-200 rounded-lg p-6 text-center hover:bg-blue-50 transition-all cursor-pointer bg-blue-50/30">
+                    <div className="relative border-2 border-dashed border-blue-200 rounded-lg p-6 text-center hover:bg-blue-50 transition-all cursor-pointer bg-blue-50/30">
                       <input
                         type="file"
                         accept="image/*"
