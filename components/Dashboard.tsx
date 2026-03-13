@@ -515,6 +515,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onNavi
                         user={user}
                         onSave={handleProfileUpdate}
                         onCancel={() => setShowProfileCompletion(false)}
+                        roleContext="worker"
                     />
                 </div>
             )}

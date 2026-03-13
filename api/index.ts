@@ -590,11 +590,12 @@ app.get('/api/cleaners', async (req: ExpressRequest, res: ExpressResponse) => {
 
       return {
         id: c._id.toString(),
-        name: c.fullName,
+        name: c.cleanerType === 'Company' && c.companyName ? c.companyName : c.fullName,
         photoUrl: c.profilePhoto,
         rating: parseFloat(avgRating.toFixed(1)),
         reviews: reviews.length,
         serviceTypes: c.services || [],
+        country: c.country,
         state: c.state,
         city: c.city,
         otherCity: c.otherCity,

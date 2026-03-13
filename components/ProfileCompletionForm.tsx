@@ -8,9 +8,10 @@ interface ProfileCompletionFormProps {
   user: User;
   onSave: (updates: Partial<User>) => Promise<void>;
   onCancel?: () => void;
+  roleContext?: 'client' | 'worker';
 }
 
-export default function ProfileCompletionForm({ user, onSave, onCancel }: ProfileCompletionFormProps) {
+export default function ProfileCompletionForm({ user, onSave, onCancel, roleContext }: ProfileCompletionFormProps) {
   const [formData, setFormData] = useState<Partial<User>>({
     userType: user.userType,
     fullName: user.fullName || '',
@@ -249,11 +250,19 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
             className={`w-full p-3 bg-white border rounded-lg focus:ring-2 transition-shadow ${fc('userType')}`}
             required
           >
-            <option value="">Select your role...</option>
-            <option value="Client (Individual)">Client (Individual) - I want to hire professionals</option>
-            <option value="Client (Registered Company)">Client (Company) - We want to hire professionals</option>
-            <option value="Worker (Individual)">Professional (Individual) - I want to offer services</option>
-            <option value="Worker (Registered Company)">Professional (Company) - We want to offer services</option>
+            <option value="">Select your account type...</option>
+            {(!roleContext || roleContext === 'client') && (
+              <>
+                <option value="Client (Individual)">Client (Individual) - I want to hire professionals</option>
+                <option value="Client (Registered Company)">Client (Registered Company) - We want to hire professionals</option>
+              </>
+            )}
+            {(!roleContext || roleContext === 'worker') && (
+              <>
+                <option value="Worker (Individual)">Professional (Individual) - I want to offer services</option>
+                <option value="Worker (Registered Company)">Professional (Registered Company) - We want to offer services</option>
+              </>
+            )}
           </select>
           {fe('userType')}
         </div>

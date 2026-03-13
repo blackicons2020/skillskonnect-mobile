@@ -571,6 +571,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user, allClean
                     <ProfileCompletionForm 
                         user={user} 
                         onSave={handleProfileUpdate}
+                        roleContext="client"
                     />
                 </div>
             )}
@@ -1093,6 +1094,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user, allClean
                                 user={user} 
                                 onSave={handleProfileUpdate}
                                 onCancel={() => setShowProfileCompletion(false)}
+                                roleContext="client"
                             />
                         </div>
                     ) : (
