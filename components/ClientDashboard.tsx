@@ -564,16 +564,6 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user, allClean
                     </div>
                 </div>
             )}
-
-            {/* Show Profile Completion Form immediately when profile is incomplete */}
-            {isProfileIncomplete && (
-                <div className="mb-6">
-                    <ProfileCompletionForm 
-                        user={user} 
-                        onSave={handleProfileUpdate}
-                    />
-                </div>
-            )}
             
             {activeTab === 'find' && !isProfileIncomplete && (
                 <div>

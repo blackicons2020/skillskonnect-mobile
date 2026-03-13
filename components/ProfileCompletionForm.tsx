@@ -518,7 +518,8 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
               </div>
             )}
 
-            {/* Upload Profile Picture */}
+            {/* Upload Profile Picture — Workers only */}
+            {isWorker && (
             <div className="bg-white border rounded-xl overflow-hidden">
               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-gray-100">
                 <h4 className="font-semibold text-gray-800">Upload Profile Picture</h4>
@@ -571,6 +572,7 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
                 </div>
               </div>
             </div>
+            )}
 
             {error && (
               <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl flex items-start gap-3">

@@ -38,7 +38,34 @@ const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_key_123';
 
 // Increase payload limit for Base64 image uploads
 app.use(express.json({ limit: '50mb' }));
-app.use(cors());
+
+// Allow all web origins + Capacitor mobile app origins
+const ALLOWED_ORIGINS = [
+  'https://skillskonnect.online',
+  'https://www.skillskonnect.online',
+  'http://localhost:3000',
+  'http://localhost:5000',
+  'http://127.0.0.1:3000',
+  // Capacitor Android (https scheme)
+  'https://localhost',
+  // Capacitor iOS
+  'capacitor://localhost',
+  'ionic://localhost',
+];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, Postman)
+    if (!origin) return callback(null, true);
+    if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+    // Allow any localhost/127.0.0.1 origin for development
+    if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return callback(null, true);
+    return callback(null, true); // Allow all for now — tighten in production if needed
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+}));
 
 // MongoDB Connection
 const MONGO_URL = process.env.MONGO_URL || 'mongodb+srv://johnmeke2017_db_user:T6b1bVhjnkZOfD5S@craftconnect-cluster.96c4f5o.mongodb.net/craftconnect?retryWrites=true&w=majority&appName=CraftConnect-Cluster&tlsAllowInvalidCertificates=true';
@@ -328,7 +355,7 @@ app.post('/api/auth/reset-password', async (req: ExpressRequest, res: ExpressRes
   try {
     const { token, password } = req.body;
     if (!token || !password) return res.status(400).json({ message: 'Token and new password are required' });
-    if (password.length < 8) return res.status(400).json({ message: 'Password must be at least 8 characters' });
+    if (password.length < 6) return res.status(400).json({ message: 'Password must be at least 6 characters' });
 
     const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
     const user = await User.findOne({

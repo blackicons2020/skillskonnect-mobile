@@ -63,8 +63,7 @@ const LoginTab: React.FC<LoginTabProps> = ({ email, setEmail, password, setPassw
                                 id="password"
                                 autoComplete="current-password"
                                 required
-                                minLength={8}
-                                title="Password must be at least 8 characters long."
+                                minLength={6}
                                 className="block w-full px-3 py-2 border border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm bg-dark text-light"
                                 placeholder="••••••••"
                                 value={password}
@@ -214,9 +213,7 @@ const SignupTab: React.FC<SignupTabProps> = ({ onSignup }) => {
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
-                                minLength={8}
-                                pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}"
-                                title="Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, and one number."
+                                minLength={6}
                                 className="block w-full px-3 py-2 border border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm bg-dark text-light"
                                 placeholder="••••••••"
                             />
@@ -236,7 +233,7 @@ const SignupTab: React.FC<SignupTabProps> = ({ onSignup }) => {
                                 value={confirmPassword}
                                 onChange={(e) => setConfirmPassword(e.target.value)}
                                 required
-                                minLength={8}
+                                minLength={6}
                                 className="block w-full px-3 py-2 border border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm bg-dark text-light"
                                 placeholder="••••••••"
                             />
