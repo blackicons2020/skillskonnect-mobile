@@ -518,7 +518,7 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
               </div>
             )}
 
-            {/* Upload Profile Picture — Workers only */}
+            {/* Upload Profile Picture (Workers only — client profiles are not displayed) */}
             {isWorker && (
             <div className="bg-white border rounded-xl overflow-hidden">
               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-gray-100">
