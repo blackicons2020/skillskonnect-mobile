@@ -39,17 +39,16 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   // Update selected country when country changes
   useEffect(() => {
     const country = countries.find(c => c.name === formData.country);
     if (country && country.name !== selectedCountry.name) {
       setSelectedCountry(country);
-      // Auto-populate phone code only if it's different
       if (country.phoneCode !== formData.phoneCountryCode) {
         handleChange('phoneCountryCode', country.phoneCode);
       }
-      // Reset state and city when country changes
       handleChange('state', '');
       handleChange('city', '');
     }
@@ -57,34 +56,138 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
 
   const handleChange = (field: keyof User, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    // Clear field error on change
+    if (fieldErrors[field]) {
+      setFieldErrors(prev => { const n = { ...prev }; delete n[field]; return n; });
+    }
   };
 
   const handleFileUpload = (field: keyof User, file: File) => {
+    if (file.size > 2 * 1024 * 1024) {
+      setFieldErrors(prev => ({ ...prev, [field]: 'File must be under 2MB.' }));
+      return;
+    }
     const reader = new FileReader();
     reader.onloadend = () => {
       setFormData(prev => ({ ...prev, [field]: reader.result as string }));
+      setFieldErrors(prev => { const n = { ...prev }; delete n[field]; return n; });
     };
     reader.readAsDataURL(file);
+  };
+
+  // Returns a map of field → error message. Empty map = valid.
+  const validate = (): Record<string, string> => {
+    const errs: Record<string, string> = {};
+    const isIndividualC = formData.userType === 'Client (Individual)';
+    const isCompanyC = formData.userType === 'Client (Registered Company)';
+    const isIndividualW = formData.userType === 'Worker (Individual)';
+    const isCompanyW = formData.userType === 'Worker (Registered Company)';
+    const isW = isIndividualW || isCompanyW;
+    const isIndiv = isIndividualC || isIndividualW;
+    const isComp = isCompanyC || isCompanyW;
+
+    if (!formData.userType) {
+      errs.userType = 'Please select your role.';
+    }
+
+    // Personal info
+    if (isIndiv) {
+      const name = (formData.fullName || '').trim();
+      if (!name) errs.fullName = 'Full name is required.';
+      else if (name.length < 3) errs.fullName = 'Full name must be at least 3 characters.';
+      else if (name.length > 100) errs.fullName = 'Full name must be 100 characters or fewer.';
+      else if (!/^[a-zA-ZÀ-ÿ\s'\-]+$/.test(name)) errs.fullName = 'Full name must contain only letters, spaces, hyphens, or apostrophes.';
+
+      if (!formData.gender) errs.gender = 'Please select your gender.';
+    }
+
+    // Company info
+    if (isComp) {
+      const cName = (formData.companyName || '').trim();
+      if (!cName) errs.companyName = 'Company name is required.';
+      else if (cName.length < 2) errs.companyName = 'Company name must be at least 2 characters.';
+      else if (cName.length > 100) errs.companyName = 'Company name must be 100 characters or fewer.';
+    }
+
+    // Phone
+    if (!formData.phoneCountryCode) errs.phoneCountryCode = 'Please select a country code.';
+    const phone = (formData.phoneNumber || '').trim().replace(/[\s\-\(\)]/g, '');
+    if (!phone) errs.phoneNumber = 'Phone number is required.';
+    else if (!/^\d+$/.test(phone)) errs.phoneNumber = 'Phone number must contain digits only (no spaces, dashes, or letters).';
+    else if (phone.length < 5) errs.phoneNumber = 'Phone number is too short (minimum 5 digits).';
+    else if (phone.length > 15) errs.phoneNumber = 'Phone number is too long (maximum 15 digits).';
+
+    // Location
+    if (!formData.country) errs.country = 'Please select your country.';
+    if (!formData.state || !(formData.state as string).trim()) errs.state = 'Please select or enter your state/province.';
+    if (!formData.city || !(formData.city as string).trim()) errs.city = 'Please enter your city/town.';
+    else if ((formData.city as string).trim().length < 2) errs.city = 'City/town name must be at least 2 characters.';
+
+    if (isIndiv) {
+      const addr = (formData.streetAddress || '').trim();
+      if (!addr) errs.streetAddress = 'Street address is required.';
+      else if (addr.length < 5) errs.streetAddress = 'Please enter a complete street address (at least 5 characters).';
+    }
+
+    if (isComp) {
+      const oAddr = (formData.officeAddress || '').trim();
+      if (!oAddr) errs.officeAddress = 'Office address is required.';
+      else if (oAddr.length < 5) errs.officeAddress = 'Please enter a complete office address (at least 5 characters).';
+    }
+
+    // Worker-specific
+    if (isW) {
+      const skills = Array.isArray(formData.skillType) ? formData.skillType : [];
+      if (skills.length === 0) errs.skillType = 'Please select at least one skill or service.';
+
+      const exp = Number(formData.yearsOfExperience);
+      if (formData.yearsOfExperience === undefined || formData.yearsOfExperience === null || (formData.yearsOfExperience as any) === '') {
+        errs.yearsOfExperience = 'Years of experience is required.';
+      } else if (isNaN(exp) || exp < 0) {
+        errs.yearsOfExperience = 'Years of experience must be 0 or more.';
+      } else if (exp > 60) {
+        errs.yearsOfExperience = 'Please enter a realistic value (maximum 60 years).';
+      }
+    }
+
+    return errs;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    const errs = validate();
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs);
+      setError('Please fix the errors highlighted below before submitting.');
+      // Scroll to first error
+      const firstKey = Object.keys(errs)[0];
+      const el = document.getElementById(`pcf-${firstKey}`);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
+    setFieldErrors({});
     setLoading(true);
-
     try {
-      // Validate required fields based on user type
-      if (!formData.userType) {
-        throw new Error('Please select a user type');
-      }
-
-      await onSave(formData);
+      // Normalise phone: strip formatting, store digits only
+      const cleanPhone = (formData.phoneNumber || '').replace(/[\s\-\(\)]/g, '');
+      await onSave({ ...formData, phoneNumber: cleanPhone });
     } catch (err: any) {
       setError(err.message || 'Failed to save profile');
     } finally {
       setLoading(false);
     }
   };
+
+  // Helper: red border + message under a field
+  const fe = (field: string) => fieldErrors[field]
+    ? <p className="mt-1 text-xs text-red-600">{fieldErrors[field]}</p>
+    : null;
+  const fc = (field: string) => fieldErrors[field]
+    ? 'border-red-400 focus:ring-red-400 focus:border-red-400'
+    : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500';
 
   const isIndividualClient = formData.userType === 'Client (Individual)';
   const isCompanyClient = formData.userType === 'Client (Registered Company)';
@@ -140,9 +243,10 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
             I am a... <span className="text-red-500">*</span>
           </label>
           <select
+            id="pcf-userType"
             value={formData.userType || ''}
             onChange={(e) => handleChange('userType', e.target.value as UserType)}
-            className="w-full p-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
+            className={`w-full p-3 bg-white border rounded-lg focus:ring-2 transition-shadow ${fc('userType')}`}
             required
           >
             <option value="">Select your role...</option>
@@ -151,6 +255,7 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
             <option value="Worker (Individual)">Professional (Individual) - I want to offer services</option>
             <option value="Worker (Registered Company)">Professional (Company) - We want to offer services</option>
           </select>
+          {fe('userType')}
         </div>
 
         {formData.userType && (
@@ -168,13 +273,16 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
                       Full Name <span className="text-red-500">*</span>
                     </label>
                     <input
+                      id="pcf-fullName"
                       type="text"
                       value={formData.fullName || ''}
                       onChange={(e) => handleChange('fullName', e.target.value)}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
+                      className={`w-full p-3 border rounded-lg focus:ring-2 transition-shadow ${fc('fullName')}`}
                       placeholder="e.g. John Doe"
+                      maxLength={100}
                       required
                     />
+                    {fe('fullName')}
                   </div>
 
                   <div>
@@ -182,16 +290,18 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
                       Gender <span className="text-red-500">*</span>
                     </label>
                     <select
+                      id="pcf-gender"
                       value={formData.gender || ''}
                       onChange={(e) => handleChange('gender', e.target.value)}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                      className={`w-full p-3 border rounded-lg focus:ring-2 bg-white ${fc('gender')}`}
                       required
                     >
                       <option value="">Select gender...</option>
                       <option value="Male">Male</option>
                       <option value="Female">Female</option>
-                  <option value="Other">Other</option>
+                      <option value="Other">Other</option>
                     </select>
+                    {fe('gender')}
                   </div>
                 </div>
               </div>
@@ -209,13 +319,16 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
                       Company Name <span className="text-red-500">*</span>
                     </label>
                     <input
+                      id="pcf-companyName"
                       type="text"
                       value={formData.companyName || ''}
                       onChange={(e) => handleChange('companyName', e.target.value)}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
+                      className={`w-full p-3 border rounded-lg focus:ring-2 transition-shadow ${fc('companyName')}`}
                       placeholder="e.g. Acme Constructions Ltd."
+                      maxLength={100}
                       required
                     />
+                    {fe('companyName')}
                   </div>
 
                   <div className="md:col-span-2">
@@ -223,11 +336,13 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
                       Registration Number {isCompanyClient && '(Optional)'}
                     </label>
                     <input
+                      id="pcf-companyRegistrationNumber"
                       type="text"
                       value={formData.companyRegistrationNumber || ''}
                       onChange={(e) => handleChange('companyRegistrationNumber', e.target.value)}
                       className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
                       placeholder="Enter RC or BN number"
+                      maxLength={50}
                     />
                   </div>
                 </div>
@@ -246,9 +361,10 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
                     Country Code <span className="text-red-500">*</span>
                   </label>
                   <select
+                    id="pcf-phoneCountryCode"
                     value={formData.phoneCountryCode || ''}
                     onChange={(e) => handleChange('phoneCountryCode', e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-gray-50"
+                    className={`w-full p-3 border rounded-lg focus:ring-2 bg-gray-50 ${fc('phoneCountryCode')}`}
                     required
                   >
                     <option value="">Select...</option>
@@ -258,19 +374,30 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
                       </option>
                     ))}
                   </select>
+                  {fe('phoneCountryCode')}
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Phone Number <span className="text-red-500">*</span>
                   </label>
                   <input
+                    id="pcf-phoneNumber"
                     type="tel"
+                    inputMode="numeric"
                     value={formData.phoneNumber || ''}
-                    onChange={(e) => handleChange('phoneNumber', e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
+                    onChange={(e) => {
+                      // Only allow digits, spaces, dashes, parentheses
+                      const val = e.target.value.replace(/[^0-9\s\-\(\)]/g, '');
+                      handleChange('phoneNumber', val);
+                    }}
+                    className={`w-full p-3 border rounded-lg focus:ring-2 transition-shadow ${fc('phoneNumber')}`}
                     placeholder="e.g. 8012345678"
+                    minLength={5}
+                    maxLength={20}
                     required
                   />
+                  <p className="mt-1 text-xs text-gray-400">Digits only, 5–15 numbers.</p>
+                  {fe('phoneNumber')}
                 </div>
               </div>
             </div>
@@ -287,9 +414,10 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
                     Country <span className="text-red-500">*</span>
                   </label>
                   <select
+                    id="pcf-country"
                     value={formData.country || ''}
                     onChange={(e) => handleChange('country', e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    className={`w-full p-3 border rounded-lg focus:ring-2 bg-white ${fc('country')}`}
                     required
                   >
                     <option value="">Select country...</option>
@@ -299,6 +427,7 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
                       </option>
                     ))}
                   </select>
+                  {fe('country')}
                 </div>
 
                 <div>
@@ -307,12 +436,13 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
                   </label>
                   {selectedCountry.states.length > 0 ? (
                     <select
+                      id="pcf-state"
                       value={formData.state || ''}
                       onChange={(e) => {
                         handleChange('state', e.target.value);
-                        handleChange('city', ''); // Reset city when state changes
+                        handleChange('city', '');
                       }}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                      className={`w-full p-3 border rounded-lg focus:ring-2 bg-white ${fc('state')}`}
                       required
                     >
                       <option value="">Select state/province...</option>
@@ -324,14 +454,17 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
                     </select>
                   ) : (
                     <input
+                      id="pcf-state"
                       type="text"
                       value={formData.state || ''}
                       onChange={(e) => handleChange('state', e.target.value)}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
+                      className={`w-full p-3 border rounded-lg focus:ring-2 transition-shadow ${fc('state')}`}
                       placeholder="Enter state/province"
+                      maxLength={100}
                       required
                     />
                   )}
+                  {fe('state')}
                 </div>
 
                 <div>
@@ -339,13 +472,16 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
                     City/Town <span className="text-red-500">*</span>
                   </label>
                   <input
+                    id="pcf-city"
                     type="text"
                     value={formData.city || ''}
                     onChange={(e) => handleChange('city', e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
+                    className={`w-full p-3 border rounded-lg focus:ring-2 transition-shadow ${fc('city')}`}
                     placeholder="Enter city"
+                    maxLength={100}
                     required
                   />
+                  {fe('city')}
                 </div>
 
                 {isIndividual && (
@@ -355,13 +491,16 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
                         Street Address <span className="text-red-500">*</span>
                       </label>
                       <input
+                        id="pcf-streetAddress"
                         type="text"
                         value={formData.streetAddress || ''}
                         onChange={(e) => handleChange('streetAddress', e.target.value)}
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
+                        className={`w-full p-3 border rounded-lg focus:ring-2 transition-shadow ${fc('streetAddress')}`}
                         placeholder="House number and street name"
+                        maxLength={200}
                         required
                       />
+                      {fe('streetAddress')}
                     </div>
 
                     {isIndividualClient && (
@@ -370,11 +509,13 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
                           Work Place Address <span className="text-gray-400 font-normal">(Optional)</span>
                         </label>
                         <input
+                          id="pcf-workplaceAddress"
                           type="text"
                           value={formData.workplaceAddress || ''}
                           onChange={(e) => handleChange('workplaceAddress', e.target.value)}
                           className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
                           placeholder="Where do you work?"
+                          maxLength={200}
                         />
                       </div>
                     )}
@@ -387,13 +528,16 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
                       Office Address <span className="text-red-500">*</span>
                     </label>
                     <input
+                      id="pcf-officeAddress"
                       type="text"
                       value={formData.officeAddress || ''}
                       onChange={(e) => handleChange('officeAddress', e.target.value)}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
+                      className={`w-full p-3 border rounded-lg focus:ring-2 transition-shadow ${fc('officeAddress')}`}
                       placeholder="Full office address"
+                      maxLength={200}
                       required
                     />
+                    {fe('officeAddress')}
                   </div>
                 )}
               </div>
@@ -406,7 +550,7 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
                   <h3 className="text-lg font-bold text-gray-800">Professional Expertise</h3>
                 </div>
                 
-                <div>
+                <div id="pcf-skillType">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Skills & Services <span className="text-red-500">*</span>
                     <span className="text-xs text-gray-500 ml-2">(Select based on your expertise)</span>
@@ -418,6 +562,7 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
                   <p className="text-xs text-gray-500 mt-2">
                     Select all skills that apply. You can search by name.
                   </p>
+                  {fe('skillType')}
                 </div>
 
                 <div>
@@ -425,14 +570,18 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
                     Years of Experience <span className="text-red-500">*</span>
                   </label>
                   <input
+                    id="pcf-yearsOfExperience"
                     type="number"
-                    value={formData.yearsOfExperience || ''}
+                    inputMode="numeric"
+                    value={formData.yearsOfExperience !== undefined && formData.yearsOfExperience !== 0 ? formData.yearsOfExperience : ''}
                     onChange={(e) => handleChange('yearsOfExperience', parseInt(e.target.value) || 0)}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
+                    className={`w-full p-3 border rounded-lg focus:ring-2 transition-shadow ${fc('yearsOfExperience')}`}
                     placeholder="e.g. 5"
                     min="0"
+                    max="60"
                     required
                   />
+                  {fe('yearsOfExperience')}
                 </div>
 
                 <div className="bg-gray-50 p-5 rounded-xl border border-gray-200">
