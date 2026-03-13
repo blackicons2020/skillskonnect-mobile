@@ -4,8 +4,15 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/jpeg" href="/sk_logo.jpg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Mobile-first viewport: prevents zoom on input focus, respects notch/safe areas -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#007A5E" />
+    <!-- iOS PWA / Capacitor full-screen -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <!-- Prevent phone-number auto-detection (Android) -->
+    <meta name="format-detection" content="telephone=no" />
     <link rel="manifest" href="/manifest.json" />
     <link rel="apple-touch-icon" href="/sk_logo.jpg" />
     
@@ -53,5 +60,6 @@
   <body class="bg-light text-dark">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
+    <!-- Capacitor runtime (injected automatically when running in native shell) -->
   </body>
 </html>

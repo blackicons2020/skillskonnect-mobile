@@ -4,12 +4,27 @@ import { User, Cleaner, Booking, AdminRole, Chat, Message, SupportTicket, Review
 // ==========================================
 // CONFIGURATION
 // ==========================================
-// Safely determine API URL. 
+// The production API is shared between the web app (https://skillskonnect.online/)
+// and the mobile app (Capacitor). Both read from the same MongoDB on Render.
+const PRODUCTION_API_URL = 'https://skillskonnect.onrender.com/api';
+
 const getApiUrl = () => {
     try {
         const env = (import.meta as any).env;
+        // Running inside Capacitor native shell: hostname is 'localhost' but
+        // there is no real local server — always use the production API.
+        const isCapacitor =
+            typeof (window as any).Capacitor !== 'undefined' ||
+            (typeof location !== 'undefined' &&
+                (location.protocol === 'capacitor:' ||
+                    (location.protocol === 'https:' && location.hostname === 'localhost')));
+
+        if (isCapacitor) {
+            return PRODUCTION_API_URL;
+        }
+
         if (env) {
-            // Use VITE_API_URL if set (for production deployments), otherwise use localhost
+            // Use VITE_API_URL if set (for production/mobile deployments), otherwise use localhost
             return env.VITE_API_URL || 'http://localhost:5000/api';
         }
     } catch (e) {
@@ -168,9 +183,10 @@ export const apiService = {
     },
 
     getAllCleaners: async (): Promise<Cleaner[]> => {
+        // No Content-Type header on GET requests (no body) — avoids CORS preflight
+        // which can fail on some mobile carriers / strict WebViews
         const response = await fetch(`${API_URL}/cleaners`, {
             method: 'GET',
-            headers: { 'Content-Type': 'application/json' },
         });
         return handleResponse(response);
     },

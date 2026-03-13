@@ -11,6 +11,9 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { User, Cleaner, View, SubscriptionPlan, Review, Job } from './types';
 import { apiService, getStoredToken, storeToken, clearToken } from './services/apiService';
 import { paymentService } from './services/paymentService';
+import { App as CapacitorApp } from '@capacitor/app';
+import { StatusBar, Style } from '@capacitor/status-bar';
+import { SplashScreen } from '@capacitor/splash-screen';
 
 // Lazy Load Pages to optimize initial bundle size
 const LandingPage = React.lazy(() => import('./components/LandingPage').then(module => ({ default: module.LandingPage })));
@@ -145,6 +148,38 @@ const App: React.FC = () => {
 
 
     // On initial app load, check for an existing session token
+    useEffect(() => {
+        // ── Capacitor native setup ──────────────────────────────────────────
+        const isNative = typeof (window as any).Capacitor !== 'undefined';
+        if (isNative) {
+            // Light status bar text on the green brand colour
+            StatusBar.setStyle({ style: Style.Light }).catch(() => {});
+            StatusBar.setBackgroundColor({ color: '#007A5E' }).catch(() => {});
+
+            // Hide the splash screen once React has mounted
+            SplashScreen.hide().catch(() => {});
+
+            // Android hardware back-button: navigate back through view history
+            const backHandler = CapacitorApp.addListener('backButton', () => {
+                setViewHistory(prev => {
+                    if (prev.length > 0) {
+                        const newHistory = [...prev];
+                        const previousView = newHistory.pop()!;
+                        setView(previousView);
+                        return newHistory;
+                    }
+                    // No history left — exit the app
+                    CapacitorApp.exitApp();
+                    return prev;
+                });
+            });
+
+            return () => {
+                backHandler.then(h => h.remove()).catch(() => {});
+            };
+        }
+    }, []);
+
     useEffect(() => {
         const checkSession = async () => {
             setIsLoading(true);
@@ -289,7 +324,13 @@ const App: React.FC = () => {
                     apiService.getAllCleaners(),
                     apiService.getAllJobs(),
                 ]);
-                if (cleaners.status === 'fulfilled') setAllCleaners(cleaners.value);
+                if (cleaners.status === 'fulfilled') {
+                    setAllCleaners(cleaners.value);
+                } else {
+                    const errMsg = (cleaners as any).reason?.message || 'Unable to load professionals. Please check your internet connection and try again.';
+                    console.error('[Mobile] Failed to fetch cleaners:', errMsg);
+                    setAppError(errMsg);
+                }
                 if (jobs.status === 'fulfilled') setAllJobs(jobs.value as any);
             }
 

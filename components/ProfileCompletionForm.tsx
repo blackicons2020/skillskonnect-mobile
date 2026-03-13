@@ -39,6 +39,30 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  // Phone number expected digit lengths by country code (digits only, without leading 0)
+  const phoneDigitLengths: Record<string, { min: number; max: number }> = {
+    '+234': { min: 10, max: 11 }, '+1': { min: 10, max: 10 }, '+44': { min: 10, max: 10 },
+    '+91': { min: 10, max: 10 }, '+27': { min: 9, max: 9 }, '+61': { min: 9, max: 9 },
+    '+49': { min: 10, max: 11 }, '+33': { min: 9, max: 9 }, '+81': { min: 10, max: 10 },
+    '+86': { min: 11, max: 11 }, '+55': { min: 10, max: 11 }, '+254': { min: 9, max: 10 },
+    '+233': { min: 9, max: 10 }, '+255': { min: 9, max: 9 }, '+256': { min: 9, max: 9 },
+    '+250': { min: 9, max: 9 }, '+251': { min: 9, max: 9 }, '+20': { min: 10, max: 10 },
+    '+212': { min: 9, max: 9 }, '+92': { min: 10, max: 10 }, '+63': { min: 10, max: 10 },
+    '+62': { min: 10, max: 12 }, '+66': { min: 9, max: 9 }, '+84': { min: 9, max: 10 },
+    '+82': { min: 9, max: 10 }, '+60': { min: 9, max: 10 }, '+65': { min: 8, max: 8 },
+    '+52': { min: 10, max: 10 }, '+54': { min: 10, max: 10 }, '+57': { min: 10, max: 10 },
+    '+56': { min: 9, max: 9 }, '+51': { min: 9, max: 9 }, '+58': { min: 10, max: 10 },
+    '+7': { min: 10, max: 10 }, '+90': { min: 10, max: 10 }, '+39': { min: 9, max: 10 },
+    '+34': { min: 9, max: 9 }, '+31': { min: 9, max: 9 }, '+46': { min: 9, max: 9 },
+    '+47': { min: 8, max: 8 }, '+48': { min: 9, max: 9 }, '+41': { min: 9, max: 9 },
+    '+43': { min: 10, max: 11 }, '+32': { min: 9, max: 9 }, '+30': { min: 10, max: 10 },
+    '+353': { min: 9, max: 9 }, '+64': { min: 9, max: 10 }, '+971': { min: 9, max: 9 },
+    '+966': { min: 9, max: 9 }, '+974': { min: 8, max: 8 }, '+973': { min: 8, max: 8 },
+    '+237': { min: 9, max: 9 }, '+221': { min: 9, max: 9 }, '+225': { min: 10, max: 10 },
+  };
+  const defaultPhoneLength = { min: 7, max: 15 };
 
   // Update selected country when country changes
   useEffect(() => {
@@ -57,6 +81,128 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
 
   const handleChange = (field: keyof User, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    // Clear field error when user edits that field
+    if (fieldErrors[field]) {
+      setFieldErrors(prev => { const next = { ...prev }; delete next[field]; return next; });
+    }
+  };
+
+  // Allow only digits in phone number field
+  const handlePhoneChange = (value: string) => {
+    const digits = value.replace(/\D/g, '');
+    handleChange('phoneNumber', digits);
+  };
+
+  // Full-name: letters, spaces, hyphens, apostrophes only
+  const handleFullNameChange = (value: string) => {
+    const cleaned = value.replace(/[^a-zA-ZÀ-ÖØ-öø-ÿ\s'\-]/g, '');
+    handleChange('fullName', cleaned);
+  };
+
+  // City: letters, spaces, hyphens, apostrophes only
+  const handleCityChange = (value: string) => {
+    const cleaned = value.replace(/[^a-zA-ZÀ-ÖØ-öø-ÿ\s'\-]/g, '');
+    handleChange('city', cleaned);
+  };
+
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
+
+    if (!formData.userType) {
+      errors.userType = 'Please select a user type';
+    }
+
+    const _isIndividual = formData.userType === 'Client (Individual)' || formData.userType === 'Worker (Individual)';
+    const _isCompany = formData.userType === 'Client (Registered Company)' || formData.userType === 'Worker (Registered Company)';
+    const _isWorker = formData.userType === 'Worker (Individual)' || formData.userType === 'Worker (Registered Company)';
+    const _isCompanyWorker = formData.userType === 'Worker (Registered Company)';
+
+    // --- Individual fields ---
+    if (_isIndividual) {
+      const name = (formData.fullName || '').trim();
+      if (!name) {
+        errors.fullName = 'Full name is required';
+      } else if (name.length < 2) {
+        errors.fullName = 'Name must be at least 2 characters';
+      } else if (!/^[a-zA-ZÀ-ÖØ-öø-ÿ\s'\-]+$/.test(name)) {
+        errors.fullName = 'Name can only contain letters, spaces, hyphens and apostrophes';
+      }
+      if (!formData.gender) {
+        errors.gender = 'Please select your gender';
+      }
+    }
+
+    // --- Company fields ---
+    if (_isCompany) {
+      if (!(formData.companyName || '').trim()) {
+        errors.companyName = 'Company name is required';
+      }
+      if (_isCompanyWorker && !(formData.companyRegistrationNumber || '').trim()) {
+        errors.companyRegistrationNumber = 'Registration number is required for worker companies';
+      }
+    }
+
+    // --- Phone ---
+    if (!formData.phoneCountryCode) {
+      errors.phoneCountryCode = 'Please select a country code';
+    }
+    const phone = (formData.phoneNumber || '').trim();
+    if (!phone) {
+      errors.phoneNumber = 'Phone number is required';
+    } else if (!/^\d+$/.test(phone)) {
+      errors.phoneNumber = 'Phone number must contain digits only';
+    } else {
+      const lengths = phoneDigitLengths[formData.phoneCountryCode || ''] || defaultPhoneLength;
+      if (phone.length < lengths.min || phone.length > lengths.max) {
+        errors.phoneNumber = lengths.min === lengths.max
+          ? `Phone number must be exactly ${lengths.min} digits for this country code`
+          : `Phone number must be ${lengths.min}-${lengths.max} digits for this country code`;
+      }
+    }
+
+    // --- Location ---
+    if (!formData.country) errors.country = 'Please select a country';
+    if (!(formData.state || '').trim()) errors.state = 'State/Province is required';
+    const city = (formData.city || '').trim();
+    if (!city) {
+      errors.city = 'City/Town is required';
+    } else if (!/^[a-zA-ZÀ-ÖØ-öø-ÿ\s'\-]+$/.test(city)) {
+      errors.city = 'City can only contain letters, spaces, hyphens and apostrophes';
+    }
+
+    if (_isIndividual && !(formData.streetAddress || '').trim()) {
+      errors.streetAddress = 'Street address is required';
+    }
+    if (_isCompany && !(formData.officeAddress || '').trim()) {
+      errors.officeAddress = 'Office address is required';
+    }
+
+    // --- Worker professional fields ---
+    if (_isWorker) {
+      if (!Array.isArray(formData.skillType) || formData.skillType.length === 0) {
+        errors.skillType = 'Please select at least one skill';
+      }
+      if (!formData.yearsOfExperience || formData.yearsOfExperience < 0) {
+        errors.yearsOfExperience = 'Years of experience is required (0 or more)';
+      } else if (formData.yearsOfExperience > 70) {
+        errors.yearsOfExperience = 'Please enter a realistic number of years';
+      }
+
+      const _isNeg = formData.chargeRateType === 'Not Fixed';
+      const _pm = getPricingModel((formData.country as string) || 'Nigeria');
+      const _removeDailyCountries = REMOVE_DAILY_CHARGE_COUNTRIES.has((formData.country as string) || '');
+      const _effectivePM = (_pm === 'daily' && _removeDailyCountries) ? 'negotiable' : _pm;
+
+      if (_effectivePM === 'hourly' && !_isNeg && (!formData.chargeHourly || formData.chargeHourly <= 0)) {
+        errors.chargeHourly = 'Please enter your hourly rate or check Negotiable';
+      }
+      if (_effectivePM === 'daily' && !_isNeg && (!formData.chargeDaily || formData.chargeDaily <= 0)) {
+        errors.chargeDaily = 'Please enter your daily rate or check Negotiable';
+      }
+    }
+
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const handleFileUpload = (field: keyof User, file: File) => {
@@ -70,14 +216,14 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (!validateForm()) {
+      setError('Please fix the highlighted errors before submitting.');
+      return;
+    }
+
     setLoading(true);
-
     try {
-      // Validate required fields based on user type
-      if (!formData.userType) {
-        throw new Error('Please select a user type');
-      }
-
       await onSave(formData);
     } catch (err: any) {
       setError(err.message || 'Failed to save profile');
@@ -170,11 +316,12 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
                     <input
                       type="text"
                       value={formData.fullName || ''}
-                      onChange={(e) => handleChange('fullName', e.target.value)}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
+                      onChange={(e) => handleFullNameChange(e.target.value)}
+                      className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow ${fieldErrors.fullName ? 'border-red-400 bg-red-50' : 'border-gray-300'}`}
                       placeholder="e.g. John Doe"
                       required
                     />
+                    {fieldErrors.fullName && <p className="text-red-500 text-xs mt-1">{fieldErrors.fullName}</p>}
                   </div>
 
                   <div>
@@ -184,7 +331,7 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
                     <select
                       value={formData.gender || ''}
                       onChange={(e) => handleChange('gender', e.target.value)}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                      className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white ${fieldErrors.gender ? 'border-red-400 bg-red-50' : 'border-gray-300'}`}
                       required
                     >
                       <option value="">Select gender...</option>
@@ -192,6 +339,7 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
                       <option value="Female">Female</option>
                   <option value="Other">Other</option>
                     </select>
+                    {fieldErrors.gender && <p className="text-red-500 text-xs mt-1">{fieldErrors.gender}</p>}
                   </div>
                 </div>
               </div>
@@ -212,10 +360,11 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
                       type="text"
                       value={formData.companyName || ''}
                       onChange={(e) => handleChange('companyName', e.target.value)}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
+                      className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow ${fieldErrors.companyName ? 'border-red-400 bg-red-50' : 'border-gray-300'}`}
                       placeholder="e.g. Acme Constructions Ltd."
                       required
                     />
+                    {fieldErrors.companyName && <p className="text-red-500 text-xs mt-1">{fieldErrors.companyName}</p>}
                   </div>
 
                   <div className="md:col-span-2">
@@ -226,9 +375,10 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
                       type="text"
                       value={formData.companyRegistrationNumber || ''}
                       onChange={(e) => handleChange('companyRegistrationNumber', e.target.value)}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
+                      className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow ${fieldErrors.companyRegistrationNumber ? 'border-red-400 bg-red-50' : 'border-gray-300'}`}
                       placeholder="Enter RC or BN number"
                     />
+                    {fieldErrors.companyRegistrationNumber && <p className="text-red-500 text-xs mt-1">{fieldErrors.companyRegistrationNumber}</p>}
                   </div>
                 </div>
               </div>
@@ -248,7 +398,7 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
                   <select
                     value={formData.phoneCountryCode || ''}
                     onChange={(e) => handleChange('phoneCountryCode', e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-gray-50"
+                    className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 bg-gray-50 ${fieldErrors.phoneCountryCode ? 'border-red-400 bg-red-50' : 'border-gray-300'}`}
                     required
                   >
                     <option value="">Select...</option>
@@ -258,6 +408,7 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
                       </option>
                     ))}
                   </select>
+                  {fieldErrors.phoneCountryCode && <p className="text-red-500 text-xs mt-1">{fieldErrors.phoneCountryCode}</p>}
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -265,12 +416,15 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
                   </label>
                   <input
                     type="tel"
+                    inputMode="numeric"
                     value={formData.phoneNumber || ''}
-                    onChange={(e) => handleChange('phoneNumber', e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
-                    placeholder="e.g. 8012345678"
+                    onChange={(e) => handlePhoneChange(e.target.value)}
+                    maxLength={(phoneDigitLengths[formData.phoneCountryCode || ''] || defaultPhoneLength).max}
+                    className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow ${fieldErrors.phoneNumber ? 'border-red-400 bg-red-50' : 'border-gray-300'}`}
+                    placeholder={`e.g. ${'0'.repeat((phoneDigitLengths[formData.phoneCountryCode || ''] || defaultPhoneLength).min)} (${(phoneDigitLengths[formData.phoneCountryCode || ''] || defaultPhoneLength).min} digits)`}
                     required
                   />
+                  {fieldErrors.phoneNumber && <p className="text-red-500 text-xs mt-1">{fieldErrors.phoneNumber}</p>}
                 </div>
               </div>
             </div>
@@ -289,7 +443,7 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
                   <select
                     value={formData.country || ''}
                     onChange={(e) => handleChange('country', e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white ${fieldErrors.country ? 'border-red-400 bg-red-50' : 'border-gray-300'}`}
                     required
                   >
                     <option value="">Select country...</option>
@@ -312,7 +466,7 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
                         handleChange('state', e.target.value);
                         handleChange('city', ''); // Reset city when state changes
                       }}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                      className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white ${fieldErrors.state ? 'border-red-400 bg-red-50' : 'border-gray-300'}`}
                       required
                     >
                       <option value="">Select state/province...</option>
@@ -327,11 +481,12 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
                       type="text"
                       value={formData.state || ''}
                       onChange={(e) => handleChange('state', e.target.value)}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
+                      className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow ${fieldErrors.state ? 'border-red-400 bg-red-50' : 'border-gray-300'}`}
                       placeholder="Enter state/province"
                       required
                     />
                   )}
+                  {fieldErrors.state && <p className="text-red-500 text-xs mt-1">{fieldErrors.state}</p>}
                 </div>
 
                 <div>
@@ -341,11 +496,12 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
                   <input
                     type="text"
                     value={formData.city || ''}
-                    onChange={(e) => handleChange('city', e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
+                    onChange={(e) => handleCityChange(e.target.value)}
+                    className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow ${fieldErrors.city ? 'border-red-400 bg-red-50' : 'border-gray-300'}`}
                     placeholder="Enter city"
                     required
                   />
+                  {fieldErrors.city && <p className="text-red-500 text-xs mt-1">{fieldErrors.city}</p>}
                 </div>
 
                 {isIndividual && (
@@ -358,10 +514,11 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
                         type="text"
                         value={formData.streetAddress || ''}
                         onChange={(e) => handleChange('streetAddress', e.target.value)}
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
+                        className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow ${fieldErrors.streetAddress ? 'border-red-400 bg-red-50' : 'border-gray-300'}`}
                         placeholder="House number and street name"
                         required
                       />
+                      {fieldErrors.streetAddress && <p className="text-red-500 text-xs mt-1">{fieldErrors.streetAddress}</p>}
                     </div>
 
                     {isIndividualClient && (
@@ -390,10 +547,11 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
                       type="text"
                       value={formData.officeAddress || ''}
                       onChange={(e) => handleChange('officeAddress', e.target.value)}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
+                      className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow ${fieldErrors.officeAddress ? 'border-red-400 bg-red-50' : 'border-gray-300'}`}
                       placeholder="Full office address"
                       required
                     />
+                    {fieldErrors.officeAddress && <p className="text-red-500 text-xs mt-1">{fieldErrors.officeAddress}</p>}
                   </div>
                 )}
               </div>
@@ -418,6 +576,7 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
                   <p className="text-xs text-gray-500 mt-2">
                     Select all skills that apply. You can search by name.
                   </p>
+                  {fieldErrors.skillType && <p className="text-red-500 text-xs mt-1">{fieldErrors.skillType}</p>}
                 </div>
 
                 <div>
@@ -426,13 +585,16 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
                   </label>
                   <input
                     type="number"
+                    inputMode="numeric"
                     value={formData.yearsOfExperience || ''}
                     onChange={(e) => handleChange('yearsOfExperience', parseInt(e.target.value) || 0)}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
+                    className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow ${fieldErrors.yearsOfExperience ? 'border-red-400 bg-red-50' : 'border-gray-300'}`}
                     placeholder="e.g. 5"
                     min="0"
+                    max="70"
                     required
                   />
+                  {fieldErrors.yearsOfExperience && <p className="text-red-500 text-xs mt-1">{fieldErrors.yearsOfExperience}</p>}
                 </div>
 
                 <div className="bg-gray-50 p-5 rounded-xl border border-gray-200">
@@ -448,13 +610,14 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
                           type="number"
                           value={formData.chargeHourly || ''}
                           onChange={(e) => handleChange('chargeHourly', parseFloat(e.target.value) || 0)}
-                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed bg-white"
+                          className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed bg-white ${fieldErrors.chargeHourly ? 'border-red-400 bg-red-50' : 'border-gray-300'}`}
                           placeholder="0.00"
                           min="0"
                           step="0.01"
                           disabled={isNegotiable}
                           required={!isNegotiable}
                         />
+                        {fieldErrors.chargeHourly && <p className="text-red-500 text-xs mt-1">{fieldErrors.chargeHourly}</p>}
                       </div>
                     )}
                     {effectivePricingModel === 'daily' && (
@@ -466,13 +629,14 @@ export default function ProfileCompletionForm({ user, onSave, onCancel }: Profil
                           type="number"
                           value={formData.chargeDaily || ''}
                           onChange={(e) => handleChange('chargeDaily', parseFloat(e.target.value) || 0)}
-                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed bg-white"
+                          className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed bg-white ${fieldErrors.chargeDaily ? 'border-red-400 bg-red-50' : 'border-gray-300'}`}
                           placeholder="0.00"
                           min="0"
                           step="0.01"
                           disabled={isNegotiable}
                           required={!isNegotiable}
                         />
+                        {fieldErrors.chargeDaily && <p className="text-red-500 text-xs mt-1">{fieldErrors.chargeDaily}</p>}
                       </div>
                     )}
                     {effectivePricingModel === 'negotiable' && (

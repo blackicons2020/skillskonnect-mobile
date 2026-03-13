@@ -8,3 +8,48 @@
   --color-dark: #1A202C;
   --font-sans: 'Inter', sans-serif;
 }
+
+/* ============================================================
+   CAPACITOR / MOBILE SAFE AREA SUPPORT
+   Respects iOS notch, Dynamic Island, and Android nav bar
+   ============================================================ */
+:root {
+  --sat: env(safe-area-inset-top, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+}
+
+/* Prevent rubber-band scroll on the document level (iOS) */
+html,
+body {
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+  height: 100%;
+}
+
+#root {
+  /* Push content below the status bar on iOS / Android */
+  padding-top: var(--sat);
+  padding-right: var(--sar);
+  padding-bottom: var(--sab);
+  padding-left: var(--sal);
+  min-height: 100%;
+}
+
+/* Prevent text selection on tap in native-feeling UI */
+.no-select {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Smooth momentum scrolling for scroll containers */
+.scroll-container {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Prevent blue tap highlight on mobile */
+* {
+  -webkit-tap-highlight-color: transparent;
+}

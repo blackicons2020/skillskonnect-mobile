@@ -19,6 +19,12 @@ export default defineConfig(({ mode }) => {
         alias: {
           '@': path.resolve(__dirname, '.'),
         }
-      }
+      },
+      build: {
+        // Capacitor requires web assets in the 'dist' folder
+        outDir: 'dist',
+        // Ensure compatibility with older WebViews
+        target: ['es2015', 'chrome89', 'safari13'],
+      },
     };
 });

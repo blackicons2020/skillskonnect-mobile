@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Skills Konnect</string>
+    <string name="title_activity_main">Skills Konnect</string>
+    <string name="package_name">online.skillskonnect.app</string>
+    <string name="custom_url_scheme">online.skillskonnect.app</string>
+</resources>
