@@ -468,7 +468,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onNavi
                 </nav>
             </div>
 
-            {showProfileCompletion && (
+            {/* Profile Completion Form - shown only on profile tab */}
+            {showProfileCompletion && activeTab === 'profile' && (
                 <div className="mb-6">
                     <ProfileCompletionForm
                         user={user}
