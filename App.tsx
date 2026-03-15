@@ -237,16 +237,14 @@ const App: React.FC = () => {
 
                         if (verified) {
                             // Refresh user data to get the updated subscription
+                            // getMe already includes bookingHistory and reviewsData from the DB
                             const updatedUser = await apiService.getMe();
-                            const bookings = await apiService.getBookings().catch(() => []);
-                            updatedUser.bookingHistory = bookings as any;
                             await handleAuthSuccess(updatedUser, true, false);
                             alert(`✓ Payment successful! Your subscription to the ${updatedUser.subscriptionTier || 'selected'} plan is now active.`);
                         } else {
                             // Payment verification failed
+                            // getMe already includes bookingHistory and reviewsData from the DB
                             const meResult = await apiService.getMe();
-                            const bookings = await apiService.getBookings().catch(() => []);
-                            meResult.bookingHistory = bookings as any;
                             await handleAuthSuccess(meResult, true, false);
                             alert('Payment could not be verified. If you were charged, please contact support.');
                         }
@@ -274,11 +272,11 @@ const App: React.FC = () => {
 
             if (tokenAtStart) {
                 // Fetch everything needed in one parallel batch
-                const [cleaners, jobs, meResult, bookingsResult] = await Promise.allSettled([
+                // getMe already returns bookingHistory and reviewsData from the DB
+                const [cleaners, jobs, meResult] = await Promise.allSettled([
                     apiService.getAllCleaners(),
                     apiService.getAllJobs(),
                     apiService.getMe(),
-                    apiService.getBookings(),
                 ]);
 
                 if (cleaners.status === 'fulfilled') setAllCleaners(cleaners.value);
@@ -300,9 +298,6 @@ const App: React.FC = () => {
 
                 if (meResult.status === 'fulfilled') {
                     const currentUser = meResult.value;
-                    if (bookingsResult.status === 'fulfilled') {
-                        currentUser.bookingHistory = bookingsResult.value as any;
-                    }
                     // shouldNavigate=true: restore the user to their correct dashboard
                     await handleAuthSuccess(currentUser, true, true);
                 } else {
@@ -604,12 +599,12 @@ const App: React.FC = () => {
             };
             const newBooking = await apiService.createBooking(bookingData);
 
-            // Fetch updated bookings from backend to ensure sync
+            // Refresh full user data from backend to ensure bookingHistory is in sync
             try {
-                const updatedBookings = await apiService.getBookings();
-                setUser(prev => prev ? ({ ...prev, bookingHistory: updatedBookings }) : null);
+                const freshUser = await apiService.getMe();
+                setUser(freshUser);
             } catch (error) {
-                // Fallback to local state update if fetch fails
+                // Fallback to local state update if full refresh fails
                 setUser(prev => prev ? ({ ...prev, bookingHistory: [...(prev.bookingHistory || []), newBooking] }) : null);
             }
 
@@ -625,12 +620,12 @@ const App: React.FC = () => {
         try {
             const cancelledBooking = await apiService.cancelBooking(bookingId);
 
-            // Fetch updated bookings from backend to ensure sync
+            // Refresh full user data from backend to ensure sync
             try {
-                const updatedBookings = await apiService.getBookings();
-                setUser(prev => prev ? ({ ...prev, bookingHistory: updatedBookings }) : null);
+                const freshUser = await apiService.getMe();
+                setUser(freshUser);
             } catch (error) {
-                // Fallback to local state update if fetch fails
+                // Fallback to local state update if full refresh fails
                 setUser(prev => prev ? ({ ...prev, bookingHistory: prev.bookingHistory?.map(b => b.id === bookingId ? cancelledBooking : b) }) : null);
             }
 
@@ -642,12 +637,12 @@ const App: React.FC = () => {
         try {
             const completedBooking = await apiService.markJobComplete(bookingId);
 
-            // Fetch updated bookings from backend to ensure sync
+            // Refresh full user data from backend to ensure sync
             try {
-                const updatedBookings = await apiService.getBookings();
-                setUser(prev => prev ? ({ ...prev, bookingHistory: updatedBookings }) : null);
+                const freshUser = await apiService.getMe();
+                setUser(freshUser);
             } catch (error) {
-                // Fallback to local state update if fetch fails
+                // Fallback to local state update if full refresh fails
                 setUser(prev => prev ? ({ ...prev, bookingHistory: prev.bookingHistory?.map(b => b.id === bookingId ? completedBooking : b) }) : null);
             }
         } catch (e: any) { alert(`Failed to mark as complete: ${e.message}`); }
@@ -657,12 +652,12 @@ const App: React.FC = () => {
         try {
             await apiService.submitReview(bookingId, { ...reviewData, cleanerId });
 
-            // Fetch updated bookings from backend to ensure sync
+            // Refresh full user data from backend (bookingHistory + reviewsData)
             try {
-                const updatedBookings = await apiService.getBookings();
-                setUser(prev => prev ? ({ ...prev, bookingHistory: updatedBookings }) : null);
+                const freshUser = await apiService.getMe();
+                setUser(freshUser);
             } catch (error) {
-                // Fallback to local state update if fetch fails
+                // Fallback to local state update if full refresh fails
                 setUser(prev => prev ? ({ ...prev, bookingHistory: prev.bookingHistory?.map(b => b.id === bookingId ? { ...b, reviewSubmitted: true } : b) }) : null);
             }
 
