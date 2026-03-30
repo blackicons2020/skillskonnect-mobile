@@ -334,6 +334,27 @@ const App: React.FC = () => {
         checkSession();
     }, []);
 
+    /** Retry loading public data after a connection failure. */
+    const handleRetryFetch = async () => {
+        setAppError(null);
+        setIsDataLoading(true);
+        try {
+            const [cleaners, jobs] = await Promise.allSettled([
+                apiService.getAllCleaners(),
+                apiService.getAllJobs(),
+            ]);
+            if (cleaners.status === 'fulfilled') {
+                setAllCleaners(cleaners.value);
+            } else {
+                const errMsg = (cleaners as any).reason?.message || 'Unable to load professionals.';
+                setAppError(errMsg);
+            }
+            if (jobs.status === 'fulfilled') setAllJobs(jobs.value as any);
+        } finally {
+            setIsDataLoading(false);
+        }
+    };
+
     const handleNavigate = (targetView: View) => {
         setViewHistory(prev => [...prev, view]); // push current view onto history stack
         setView(targetView);
@@ -858,6 +879,7 @@ const App: React.FC = () => {
                     onSelectCleaner={handleSelectCleaner}
                     onSearch={handleSearchFromHero}
                     appError={appError}
+                    onRetry={handleRetryFetch}
                 />;
         }
     };

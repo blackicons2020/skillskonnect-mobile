@@ -1,5 +1,6 @@
 
 import { User, Cleaner, Booking, AdminRole, Chat, Message, SupportTicket, Review, Job, AppNotification } from '../types';
+import { Network } from '@capacitor/network';
 
 // ==========================================
 // CONFIGURATION
@@ -35,10 +36,57 @@ const getApiUrl = () => {
 };
 
 const API_URL = getApiUrl();
+console.log('[API] Using API URL:', API_URL);
 
 // ==========================================
 // API HELPERS
 // ==========================================
+
+/**
+ * Wrapper around fetch that retries on network failures.
+ * Checks device connectivity first, then retries on TypeError / 5xx.
+ */
+const fetchWithRetry = async (
+    input: RequestInfo,
+    init?: RequestInit,
+    retries = 3,
+    delayMs = 3000,
+): Promise<Response> => {
+    // Check network connectivity once before the first attempt
+    try {
+        const status = await Network.getStatus();
+        if (!status.connected) {
+            throw new Error('No internet connection. Please check your network settings and try again.');
+        }
+    } catch (e: any) {
+        // If Network plugin isn't available (web), skip the check
+        if (e.message?.includes('No internet')) throw e;
+    }
+
+    for (let attempt = 0; attempt <= retries; attempt++) {
+        try {
+            console.log(`[API] Attempt ${attempt + 1}/${retries + 1}: ${typeof input === 'string' ? input : (input as Request).url}`);
+            const response = await fetch(input, init);
+            if (response.status >= 500 && attempt < retries) {
+                console.warn(`[API] Server error ${response.status}, retrying in ${delayMs * (attempt + 1)}ms...`);
+                await new Promise(r => setTimeout(r, delayMs * (attempt + 1)));
+                continue;
+            }
+            return response;
+        } catch (err: any) {
+            console.error(`[API] Fetch error (attempt ${attempt + 1}):`, err?.message || err);
+            if (attempt < retries) {
+                await new Promise(r => setTimeout(r, delayMs * (attempt + 1)));
+                continue;
+            }
+            // Enhance the error message for the user
+            throw new Error(
+                `Unable to reach the server (${err?.message || 'network error'}). Please check your internet connection.`
+            );
+        }
+    }
+    return fetch(input, init);
+};
 
 const STORAGE_KEY = 'skillskonnect_token';
 
@@ -175,7 +223,7 @@ export const apiService = {
     },
     
     getMe: async (): Promise<User> => {
-        const response = await fetch(`${API_URL}/users/me`, {
+        const response = await fetchWithRetry(`${API_URL}/users/me`, {
             method: 'GET',
             headers: getHeaders(),
         });
@@ -184,15 +232,16 @@ export const apiService = {
 
     getAllCleaners: async (): Promise<Cleaner[]> => {
         // No Content-Type header on GET requests (no body) — avoids CORS preflight
-        // which can fail on some mobile carriers / strict WebViews
-        const response = await fetch(`${API_URL}/cleaners`, {
+        // which can fail on some mobile carriers / strict WebViews.
+        // Uses retry logic to handle Render cold-start timeouts.
+        const response = await fetchWithRetry(`${API_URL}/cleaners`, {
             method: 'GET',
         });
         return handleResponse(response);
     },
 
     getAllJobs: async (): Promise<Job[]> => {
-        const response = await fetch(`${API_URL}/jobs`, {
+        const response = await fetchWithRetry(`${API_URL}/jobs`, {
             method: 'GET',
             headers: getHeaders(),
         });
@@ -279,8 +328,9 @@ export const apiService = {
         return handleResponse(response);
     },
 
-    getBookings: async (): Promise<Booking[]> => {
-        const response = await fetch(`${API_URL}/bookings`, {
+    getBookings: async (role?: 'cleaner' | 'client'): Promise<Booking[]> => {
+        const url = role ? `${API_URL}/bookings?role=${role}` : `${API_URL}/bookings`;
+        const response = await fetch(url, {
             method: 'GET',
             headers: getHeaders(),
         });

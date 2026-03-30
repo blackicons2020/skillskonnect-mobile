@@ -11,6 +11,7 @@ interface LandingPageProps {
     onSelectCleaner: (cleaner: Cleaner) => void;
     onSearch: (filters: { service: string, location: string, minPrice: string, maxPrice: string, minRating: string }) => void;
     appError: string | null;
+    onRetry?: () => void;
 }
 
 interface FeaturedCleanersSectionProps {
@@ -18,6 +19,7 @@ interface FeaturedCleanersSectionProps {
     cleaners: Cleaner[];
     onSelectCleaner: (cleaner: Cleaner) => void;
     appError: string | null;
+    onRetry?: () => void;
 }
 
 // Subscription tier scores for sorting priority (higher = better)
@@ -65,7 +67,7 @@ const getSortedCleaners = (allCleaners: Cleaner[], user?: User | null): Cleaner[
 };
 
 
-const FeaturedCleanersSection: React.FC<FeaturedCleanersSectionProps> = ({ loading, cleaners, onSelectCleaner, appError }) => (
+const FeaturedCleanersSection: React.FC<FeaturedCleanersSectionProps> = ({ loading, cleaners, onSelectCleaner, appError, onRetry }) => (
     <div className="py-16 md:py-24 bg-white">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <h2 className="text-3xl md:text-4xl font-bold text-center text-dark">Meet Our Top-Rated Professionals</h2>
@@ -76,6 +78,14 @@ const FeaturedCleanersSection: React.FC<FeaturedCleanersSectionProps> = ({ loadi
                 <div className="mt-8 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative text-center" role="alert">
                     <strong className="font-bold">Connection Error! </strong>
                     <span className="block sm:inline">{appError}</span>
+                    {onRetry && (
+                        <button
+                            onClick={onRetry}
+                            className="mt-3 block mx-auto bg-red-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-red-700 transition-colors"
+                        >
+                            Retry
+                        </button>
+                    )}
                 </div>
             )}
             <div className="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -101,7 +111,7 @@ const FeaturedCleanersSection: React.FC<FeaturedCleanersSectionProps> = ({ loadi
     </div>
 );
 
-export const LandingPage: React.FC<LandingPageProps> = ({ cleaners, user, onNavigate, onSelectCleaner, onSearch, appError }) => {
+export const LandingPage: React.FC<LandingPageProps> = ({ cleaners, user, onNavigate, onSelectCleaner, onSearch, appError, onRetry }) => {
     // The loading state is now determined by whether the cleaners prop has been populated and there's no error
     const loading = cleaners.length === 0 && !appError;
 
@@ -116,6 +126,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ cleaners, user, onNavi
                 cleaners={sortedCleaners}
                 onSelectCleaner={onSelectCleaner}
                 appError={appError}
+                onRetry={onRetry}
             />
         </>
     );
