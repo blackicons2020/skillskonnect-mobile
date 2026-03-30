@@ -107,6 +107,7 @@ interface ClientDashboardProps {
     allCleaners: Cleaner[];
     allUsers?: User[];
     allJobs?: Job[];
+    allBookings?: Booking[];
     onSelectCleaner: (cleaner: Cleaner) => void;
     initialFilters?: { service: string, location: string, minPrice: string, maxPrice: string, minRating: string } | null;
     clearInitialFilters: () => void;
@@ -120,7 +121,7 @@ interface ClientDashboardProps {
     initialTab?: 'find' | 'bookings' | 'messages' | 'support' | 'profile' | 'verification' | 'jobs' | 'notifications';
 }
 
-export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user, allCleaners, allUsers = [], allJobs = [], onSelectCleaner, initialFilters, clearInitialFilters, onNavigate, onCancelBooking, onReviewSubmit, onApproveJobCompletion, onUpdateUser, onRefreshJobs, appError, initialTab }) => {
+export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user, allCleaners, allUsers = [], allJobs = [], allBookings = [], onSelectCleaner, initialFilters, clearInitialFilters, onNavigate, onCancelBooking, onReviewSubmit, onApproveJobCompletion, onUpdateUser, onRefreshJobs, appError, initialTab }) => {
     const [recommendations, setRecommendations] = useState<string[]>([]);
     const [isRecsLoading, setIsRecsLoading] = useState(true);
     
@@ -227,7 +228,6 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user, allClean
     const [bookingToCancel, setBookingToCancel] = useState<Booking | null>(null);
     const [bookingToReview, setBookingToReview] = useState<Booking | null>(null);
     const [clientBookings, setClientBookings] = useState<Booking[]>([]);
-    const [isLoadingBookings, setIsLoadingBookings] = useState(false);
     const [activeFilters, setActiveFilters] = useState({ service: '', location: '', minPrice: '', maxPrice: '', minRating: '' });
     const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
 
@@ -304,20 +304,6 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user, allClean
             setCities([]);
         }
     }, [profileFormData.state, profileFormData.country]);
-
-    // Fetch bookings from dedicated endpoint when bookings tab opens
-    useEffect(() => {
-        if (activeTab === 'bookings') {
-            setIsLoadingBookings(true);
-            apiService.getBookings('client')
-                .then(bookings => setClientBookings(bookings))
-                .catch(() => {
-                    // Fallback to user prop data
-                    setClientBookings(user.bookingHistory || []);
-                })
-                .finally(() => setIsLoadingBookings(false));
-        }
-    }, [activeTab]);
 
     const displayedCleaners = useMemo(() => {
         if (appError) return [];
@@ -696,11 +682,11 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user, allClean
             {activeTab === 'bookings' && (
                 <div className="bg-white p-6 rounded-lg shadow-md">
                     <h2 className="text-2xl font-bold text-dark mb-4">My Booking History</h2>
-                     {isLoadingBookings ? (
-                        <p className="text-sm text-gray-500 py-4 text-center">Loading bookings...</p>
-                     ) : clientBookings.length > 0 ? (
+                     {(() => {
+                        const myBookings = allBookings.filter(b => b.clientId === user.id);
+                        return myBookings.length > 0 ? (
                         <ul className="space-y-4">
-                            {clientBookings.map((item) => {
+                            {myBookings.map((item) => {
                                 const cleaner = allCleaners.find(c => c.id === item.cleanerId);
                                 return (
                                 <li key={item.id} className="p-4 bg-gray-50 rounded-lg border flex flex-col sm:flex-row sm:items-start sm:justify-between">
@@ -748,7 +734,8 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user, allClean
                         </ul>
                     ) : (
                         <p className="text-sm text-gray-500 py-2">No bookings yet. Time to find a professional!</p>
-                    )}
+                    );
+                    })()}
                 </div>
             )}
              
