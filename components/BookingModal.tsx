@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Cleaner, User } from '../types';
 import { XCircleIcon } from './icons';
 
@@ -6,14 +6,27 @@ interface BookingModalProps {
     cleaner: Cleaner;
     user: User;
     onClose: () => void;
-    onConfirmBooking: (cleaner: Cleaner) => void;
+    onConfirmBooking: (cleaner: Cleaner, date: string, time: string, serviceDescription: string) => void;
 }
 
 export const BookingModal: React.FC<BookingModalProps> = ({ cleaner, user, onClose, onConfirmBooking }) => {
     const baseAmount = cleaner.chargeHourly || cleaner.chargeDaily || cleaner.chargePerContract || 5000;
 
+    const today = new Date().toISOString().split('T')[0];
+    const [selectedDate, setSelectedDate] = useState<string>(today);
+    const [selectedTime, setSelectedTime] = useState<string>('09:00');
+    const [serviceDescription, setServiceDescription] = useState<string>('');
+
     const handleConfirm = () => {
-        onConfirmBooking(cleaner);
+        if (!selectedDate || !selectedTime) {
+            alert('Please select a date and time for the booking.');
+            return;
+        }
+        if (!serviceDescription.trim()) {
+            alert('Please provide a brief description of the job.');
+            return;
+        }
+        onConfirmBooking(cleaner, selectedDate, selectedTime, serviceDescription.trim());
     };
 
     return (
@@ -29,9 +42,42 @@ export const BookingModal: React.FC<BookingModalProps> = ({ cleaner, user, onClo
                         <p className="mt-2 text-sm text-gray-500">You are booking <span className="font-bold">{cleaner.name}</span>.</p>
                     </div>
 
-                    <div className="my-6 p-4 bg-light rounded-lg text-center">
+                    <div className="my-4 p-4 bg-light rounded-lg text-center">
                         <p className="text-sm text-gray-600">Professional's Charge</p>
                         <p className="text-3xl font-extrabold text-dark">₦{baseAmount.toLocaleString()}</p>
+                    </div>
+
+                    <div className="my-4">
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">Service Description <span className="text-red-500">*</span></label>
+                        <textarea
+                            rows={3}
+                            placeholder="Describe the type and nature of work to be done (e.g. deep clean of 3-bedroom apartment, including kitchen and bathrooms)..."
+                            value={serviceDescription}
+                            onChange={e => setServiceDescription(e.target.value)}
+                            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                        />
+                    </div>
+
+                    <div className="my-4 grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-1">Appointment Date</label>
+                            <input
+                                type="date"
+                                min={today}
+                                value={selectedDate}
+                                onChange={e => setSelectedDate(e.target.value)}
+                                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-1">Appointment Time</label>
+                            <input
+                                type="time"
+                                value={selectedTime}
+                                onChange={e => setSelectedTime(e.target.value)}
+                                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                            />
+                        </div>
                     </div>
 
                     <div>
@@ -52,10 +98,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({ cleaner, user, onClo
                         </div>
                     </div>
                     
-                    <div className="mt-8">
+                    <div className="mt-6 flex justify-center">
                         <button
                             onClick={handleConfirm}
-                            className="w-full flex justify-center items-center rounded-md border border-transparent bg-primary px-4 py-3 text-base font-medium text-white shadow-sm hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                            className="inline-flex justify-center items-center rounded-md border border-transparent bg-primary px-8 py-3 text-base font-medium text-white shadow-sm hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
                         >
                             Confirm Booking
                         </button>

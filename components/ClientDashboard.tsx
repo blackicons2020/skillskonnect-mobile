@@ -226,6 +226,8 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user, allClean
     
     const [bookingToCancel, setBookingToCancel] = useState<Booking | null>(null);
     const [bookingToReview, setBookingToReview] = useState<Booking | null>(null);
+    const [clientBookings, setClientBookings] = useState<Booking[]>([]);
+    const [isLoadingBookings, setIsLoadingBookings] = useState(false);
     const [activeFilters, setActiveFilters] = useState({ service: '', location: '', minPrice: '', maxPrice: '', minRating: '' });
     const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
 
@@ -302,6 +304,20 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user, allClean
             setCities([]);
         }
     }, [profileFormData.state, profileFormData.country]);
+
+    // Fetch bookings from dedicated endpoint when bookings tab opens
+    useEffect(() => {
+        if (activeTab === 'bookings') {
+            setIsLoadingBookings(true);
+            apiService.getBookings('client')
+                .then(bookings => setClientBookings(bookings))
+                .catch(() => {
+                    // Fallback to user prop data
+                    setClientBookings(user.bookingHistory || []);
+                })
+                .finally(() => setIsLoadingBookings(false));
+        }
+    }, [activeTab]);
 
     const displayedCleaners = useMemo(() => {
         if (appError) return [];
@@ -680,9 +696,11 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user, allClean
             {activeTab === 'bookings' && (
                 <div className="bg-white p-6 rounded-lg shadow-md">
                     <h2 className="text-2xl font-bold text-dark mb-4">My Booking History</h2>
-                     {user.bookingHistory && user.bookingHistory.filter((b: any) => b.clientId === user.id).length > 0 ? (
+                     {isLoadingBookings ? (
+                        <p className="text-sm text-gray-500 py-4 text-center">Loading bookings...</p>
+                     ) : clientBookings.length > 0 ? (
                         <ul className="space-y-4">
-                            {user.bookingHistory.filter((b: any) => b.clientId === user.id).map((item) => {
+                            {clientBookings.map((item) => {
                                 const cleaner = allCleaners.find(c => c.id === item.cleanerId);
                                 return (
                                 <li key={item.id} className="p-4 bg-gray-50 rounded-lg border flex flex-col sm:flex-row sm:items-start sm:justify-between">

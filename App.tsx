@@ -56,7 +56,7 @@ const CleanerProfile: React.FC<CleanerProfileProps> = ({ cleaner, onBook }) => {
                         onClick={() => onBook(cleaner)}
                         className="w-full max-w-xs bg-primary text-white p-3 rounded-lg font-bold hover:bg-secondary"
                     >
-                        Book this Cleaner
+                        Book this Professional
                     </button>
                 </div>
             </div>
@@ -334,6 +334,27 @@ const App: React.FC = () => {
         checkSession();
     }, []);
 
+    /** Retry loading public data after a connection failure. */
+    const handleRetryFetch = async () => {
+        setAppError(null);
+        setIsDataLoading(true);
+        try {
+            const [cleaners, jobs] = await Promise.allSettled([
+                apiService.getAllCleaners(),
+                apiService.getAllJobs(),
+            ]);
+            if (cleaners.status === 'fulfilled') {
+                setAllCleaners(cleaners.value);
+            } else {
+                const errMsg = (cleaners as any).reason?.message || 'Unable to load professionals.';
+                setAppError(errMsg);
+            }
+            if (jobs.status === 'fulfilled') setAllJobs(jobs.value as any);
+        } finally {
+            setIsDataLoading(false);
+        }
+    };
+
     const handleNavigate = (targetView: View) => {
         setViewHistory(prev => [...prev, view]); // push current view onto history stack
         setView(targetView);
@@ -586,14 +607,14 @@ const App: React.FC = () => {
         }
     };
 
-    const handleConfirmBooking = async (cleaner: Cleaner) => {
+    const handleConfirmBooking = async (cleaner: Cleaner, date: string, time: string, serviceDescription: string) => {
         if (!user) return;
         try {
             const baseAmount = cleaner.chargeHourly || cleaner.chargeDaily || cleaner.chargePerContract || 5000;
             const bookingData = {
                 cleanerId: cleaner.id,
                 service: cleaner.serviceTypes[0] || 'General Cleaning',
-                date: new Date().toISOString().split('T')[0],
+                date,
                 amount: baseAmount,
                 paymentMethod: 'Direct',
             };
@@ -608,8 +629,30 @@ const App: React.FC = () => {
                 setUser(prev => prev ? ({ ...prev, bookingHistory: [...(prev.bookingHistory || []), newBooking] }) : null);
             }
 
+            // Send a notification message to the professional via in-app chat
+            try {
+                const chat = await apiService.createChat(user.id, cleaner.id, user.fullName || user.email, cleaner.name);
+                const clientLocation = [user.streetAddress, user.city, user.state].filter(Boolean).join(', ') || user.city || user.state || 'Not specified';
+                const formattedDate = new Date(date).toLocaleDateString('en-NG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                const formattedTime = new Date(`2000-01-01T${time}`).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' });
+                const notificationMessage =
+                    `Hello ${cleaner.name},\n\n` +
+                    `You have a new booking request from ${user.fullName || user.email}.\n\n` +
+                    `📋 Details:\n` +
+                    `• Client: ${user.fullName || user.email}\n` +
+                    `• Location: ${clientLocation}\n` +
+                    `• Service: ${cleaner.serviceTypes[0] || 'General Cleaning'}\n` +
+                    `• Job Description: ${serviceDescription}\n` +
+                    `• Date: ${formattedDate}\n` +
+                    `• Time: ${formattedTime}\n\n` +
+                    `Please reply to this message to confirm whether you accept or decline this booking.`;
+                await apiService.sendMessage(chat.id, user.id, notificationMessage);
+            } catch {
+                // Non-critical — booking already created, just skip notification
+            }
+
             handleCloseBookingModals();
-            alert('Booking created successfully!');
+            alert('Booking created successfully! The professional has been notified via in-app message.');
             handleNavigate('clientDashboard');
         } catch (error: any) {
             alert(`Booking failed: ${error.message}`);
@@ -858,6 +901,7 @@ const App: React.FC = () => {
                     onSelectCleaner={handleSelectCleaner}
                     onSearch={handleSearchFromHero}
                     appError={appError}
+                    onRetry={handleRetryFetch}
                 />;
         }
     };
