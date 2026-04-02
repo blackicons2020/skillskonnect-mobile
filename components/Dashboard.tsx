@@ -1043,7 +1043,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onNavi
                             <p className="mt-1 text-sm text-gray-500">When you get booked, your jobs will appear here.</p>
                         </div>
                     )}
-                    )}
                 </div>
             )}
 
