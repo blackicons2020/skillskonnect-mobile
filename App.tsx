@@ -14,6 +14,7 @@ import { paymentService } from './services/paymentService';
 import { App as CapacitorApp } from '@capacitor/app';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { SplashScreen } from '@capacitor/splash-screen';
+import { Preferences } from '@capacitor/preferences';
 
 // Lazy Load Pages to optimize initial bundle size
 const LandingPage = React.lazy(() => import('./components/LandingPage').then(module => ({ default: module.LandingPage })));
@@ -90,6 +91,8 @@ const App: React.FC = () => {
     const [initialAuthTab, setInitialAuthTab] = useState<'login' | 'signup'>('login');
     const [initialFilters, setInitialFilters] = useState<SearchFilters | null>(null);
     const [authMessage, setAuthMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+    // True once an account has been created on this device — prevents additional signups
+    const [signupDisabled, setSignupDisabled] = useState(false);
 
     const [isLoading, setIsLoading] = useState(true);
     const [isDataLoading, setIsDataLoading] = useState(false);
@@ -332,6 +335,11 @@ const App: React.FC = () => {
             setIsLoading(false);
         };
         checkSession();
+
+        // Check if an account has already been created on this device
+        Preferences.get({ key: 'device_signup_done' }).then(({ value }) => {
+            if (value === 'true') setSignupDisabled(true);
+        }).catch(() => {});
     }, []);
 
     /** Retry loading public data after a connection failure. */
@@ -488,6 +496,10 @@ const App: React.FC = () => {
             if (response.token && response.user) {
                 storeToken(response.token, false); // New registrations: session only until next explicit login
                 setUser(response.user);
+
+                // Mark this device as having completed signup so the signup tab is hidden in future
+                Preferences.set({ key: 'device_signup_done', value: 'true' }).catch(() => {});
+                setSignupDisabled(true);
 
                 // Navigate immediately, refetch in background
                 if (response.user.role === 'admin') {
@@ -722,8 +734,8 @@ const App: React.FC = () => {
         if (!user) {
             setCleanerToRememberForBooking(cleaner);
             setAuthMessage({ type: 'success', text: 'To secure your booking, please create a quick account.' });
-            // Redirect unregistered/logged-out users directly to the Signup tab
-            handleNavigateToAuth('signup');
+            // Redirect unregistered/logged-out users: login if device already has an account, else signup
+            handleNavigateToAuth(signupDisabled ? 'login' : 'signup');
             return;
         }
         setCleanerToBook(cleaner);
@@ -807,6 +819,7 @@ const App: React.FC = () => {
                     onSignup={handleDirectSignup}
                     authMessage={authMessage}
                     onAuthMessageDismiss={() => setAuthMessage(null)}
+                    signupDisabled={signupDisabled}
                 />);
             case 'clientDashboard':
                 // Only clients can access client dashboard

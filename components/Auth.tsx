@@ -11,6 +11,7 @@ interface AuthProps {
     onSignup: (email: string, password: string, userType: 'client' | 'worker') => Promise<void>;
     authMessage: { type: 'success' | 'error', text: string } | null;
     onAuthMessageDismiss: () => void;
+    signupDisabled?: boolean; // True on mobile after the first account has been created on this device
 }
 
 interface LoginTabProps {
@@ -84,15 +85,7 @@ const LoginTab: React.FC<LoginTabProps> = ({ email, setEmail, password, setPassw
                     </div>
                     <div className="flex items-center justify-between">
                         <div className="flex items-center">
-                            <input
-                                id="remember-me"
-                                name="remember-me"
-                                type="checkbox"
-                                className="h-4 w-4 text-primary focus:ring-secondary border-gray-300 rounded"
-                                checked={rememberMe}
-                                onChange={(e) => setRememberMe(e.target.checked)}
-                            />
-                            <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">Remember me</label>
+                            {/* Remember me removed for mobile — sessions are always persistent on a personal device */}
                         </div>
                         {/* Forgot password — hidden until email/SMTP is configured
                         <div className="text-sm">
@@ -332,16 +325,17 @@ const ForgotPasswordTab: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     );
 };
 
-export const Auth: React.FC<AuthProps> = ({ initialTab, onNavigate, onLoginAttempt, onSignup, authMessage, onAuthMessageDismiss }) => {
-    const [activeTab, setActiveTab] = useState<'login' | 'signup'>(initialTab);
+export const Auth: React.FC<AuthProps> = ({ initialTab, onNavigate, onLoginAttempt, onSignup, authMessage, onAuthMessageDismiss, signupDisabled }) => {
+    const [activeTab, setActiveTab] = useState<'login' | 'signup'>(signupDisabled ? 'login' : initialTab);
     const [loginView, setLoginView] = useState<'form' | 'forgotPassword'>('form');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [rememberMe, setRememberMe] = useState(false);
 
     useEffect(() => {
-        setActiveTab(initialTab);
-    }, [initialTab]);
+        // If signup is disabled (device already has an account), always force login tab
+        setActiveTab(signupDisabled ? 'login' : initialTab);
+    }, [initialTab, signupDisabled]);
 
     useEffect(() => {
         if (authMessage) {
@@ -381,13 +375,18 @@ export const Auth: React.FC<AuthProps> = ({ initialTab, onNavigate, onLoginAttem
                                     activeTab === 'login' && loginView === 'forgotPassword' ? 'Reset your password' :
                                         'Create an account'}
                             </h2>
-                            {loginView === 'form' && (
+                            {loginView === 'form' && !signupDisabled && (
                                 <p className="mt-2 text-center text-sm text-gray-600">
                                     {activeTab === 'login' ? 'New to Skills Konnect?' : 'Already have an account?'}
                                     {' '}
                                     <button onClick={() => handleTabChange(activeTab === 'login' ? 'signup' : 'login')} className="font-medium text-primary hover:text-secondary">
                                         {activeTab === 'login' ? 'Create an account' : 'Sign in'}
                                     </button>
+                                </p>
+                            )}
+                            {loginView === 'form' && signupDisabled && activeTab === 'login' && (
+                                <p className="mt-2 text-center text-xs text-gray-500">
+                                    An account is already registered on this device.
                                 </p>
                             )}
                         </div>
