@@ -53,9 +53,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onNavi
     const isProfileIncomplete = !user.userType || !user.phoneNumber || !user.country;
     console.log('[Dashboard] user.userType:', JSON.stringify(user.userType), '| user.phoneNumber:', JSON.stringify(user.phoneNumber), '| user.country:', JSON.stringify(user.country), '| isProfileIncomplete:', isProfileIncomplete, '| initialTab:', initialTab);
 
-    // Default to 'jobs' (My Jobs & Payments) if profile is complete, otherwise 'profile'
+    // Default to 'listings' (My Jobs & Payments tab hidden until fixed)
     const [activeTab, setActiveTab] = useState<'profile' | 'jobs' | 'reviews' | 'messages' | 'support' | 'verification' | 'listings' | 'notifications'>(
-        isProfileIncomplete ? 'profile' : (initialTab || 'jobs')
+        isProfileIncomplete ? 'profile' : (initialTab || 'listings')
     );
     const [showProfileCompletion, setShowProfileCompletion] = useState(isProfileIncomplete);
 
@@ -492,9 +492,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onNavi
                         <BriefcaseIcon className="w-4 h-4" />
                         Available Jobs
                     </button>
+                    {/* My Jobs & Payments — hidden until feature is fixed
                     <button onClick={() => setActiveTab('jobs')} className={`${activeTab === 'jobs' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}>
                         My Jobs & Payments
                     </button>
+                    */
                     {/* My Reviews & Ratings — hidden until feature is ready
                     <button onClick={() => setActiveTab('reviews')} className={`${activeTab === 'reviews' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}>
                         My Reviews & Ratings
@@ -957,7 +959,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onNavi
                 </div>
             )}
 
-            {activeTab === 'jobs' && (
+            {/* My Jobs & Payments tab content — hidden until feature is fixed
+            activeTab === 'jobs' && (
                 <div className="bg-white rounded-lg shadow-lg overflow-hidden p-6">
                     <h2 className="text-2xl font-bold text-dark mb-6 flex items-center gap-2">
                         <BriefcaseIcon className="w-6 h-6 text-primary" />
@@ -1044,7 +1047,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onNavi
                         </div>
                     )}
                 </div>
-            )}
+            ) */}
 
             {activeTab === 'reviews' && (
                 <div className="bg-white rounded-lg shadow-lg p-6">
