@@ -5,9 +5,9 @@ import { Network } from '@capacitor/network';
 // ==========================================
 // CONFIGURATION
 // ==========================================
-// The production API is shared between the web app (https://skillskonnect.online/)
-// and the mobile app (Capacitor). Both read from the same MongoDB on Render.
-const PRODUCTION_API_URL = 'https://skillskonnect.onrender.com/api';
+// The production API is hosted on Vercel alongside the web frontend.
+// Mobile (Capacitor) uses the absolute URL; the web build uses a relative /api path.
+const PRODUCTION_API_URL = 'https://skillskonnect.online/api';
 
 const getApiUrl = () => {
     try {
