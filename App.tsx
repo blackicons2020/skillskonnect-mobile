@@ -79,6 +79,26 @@ const LoadingSpinner = () => (
     </div>
 );
 
+// ─── Google Play Store review accounts ──────────────────────────────────────
+// These accounts bypass subscription requirements so app reviewers have full
+// access to all features. Regular users are unaffected.
+const REVIEW_ACCOUNT_EMAILS = [
+    'reviewer.client@skillskonnect.com',
+    'reviewer.pro@skillskonnect.com',
+];
+
+const applyReviewOverrides = (userData: User): User => {
+    if (REVIEW_ACCOUNT_EMAILS.includes((userData.email || '').toLowerCase())) {
+        return {
+            ...userData,
+            subscriptionTier: 'Premium',
+            isVerified: true,
+            subscriptionExpiry: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+        };
+    }
+    return userData;
+};
+
 const App: React.FC = () => {
     const [view, setView] = useState<View>('landing');
     const [viewHistory, setViewHistory] = useState<View[]>([]);
@@ -440,12 +460,13 @@ const App: React.FC = () => {
     };
 
     const handleAuthSuccess = async (userData: User, shouldNavigate = true, skipRefetch = false) => {
-        setUser(userData);
+        const resolvedUser = applyReviewOverrides(userData);
+        setUser(resolvedUser);
 
         // Navigate IMMEDIATELY so the auth modal disappears right away
         if (shouldNavigate) {
             if (cleanerToRememberForBooking) {
-                if (userData.userType === 'client' || userData.role === 'client') {
+                if (resolvedUser.userType === 'client' || resolvedUser.role === 'client') {
                     handleNavigate('clientDashboard');
                     setTimeout(() => {
                         setCleanerToBook(cleanerToRememberForBooking);
@@ -456,9 +477,9 @@ const App: React.FC = () => {
                     setCleanerToRememberForBooking(null);
                     handleNavigate('cleanerDashboard');
                 }
-            } else if (userData.isAdmin || (userData as any).role === 'admin' || (userData as any).adminRole) {
+            } else if (resolvedUser.isAdmin || (resolvedUser as any).role === 'admin' || (resolvedUser as any).adminRole) {
                 handleNavigate('adminDashboard');
-            } else if ((userData as any).userType === 'worker' || userData.role === 'cleaner') {
+            } else if ((resolvedUser as any).userType === 'worker' || resolvedUser.role === 'cleaner') {
                 handleNavigate('cleanerDashboard');
             } else {
                 handleNavigate('clientDashboard');
@@ -467,7 +488,7 @@ const App: React.FC = () => {
 
         // Refetch data in the background AFTER navigation
         if (skipRefetch) {
-            if (userData.isAdmin) {
+            if (resolvedUser.isAdmin) {
                 setIsDataLoading(true);
                 apiService.adminGetAllUsers()
                     .then(users => setAllUsers(users))
@@ -476,7 +497,7 @@ const App: React.FC = () => {
             }
         } else {
             // Fire and forget — don't block navigation
-            refetchAllData(userData).catch(e => console.error('Background refetch failed:', e));
+            refetchAllData(resolvedUser).catch(e => console.error('Background refetch failed:', e));
         }
     };
 
