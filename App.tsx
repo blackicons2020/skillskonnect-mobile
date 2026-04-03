@@ -102,7 +102,15 @@ const applyReviewOverrides = (userData: User): User => {
 const App: React.FC = () => {
     const [view, setView] = useState<View>('landing');
     const [viewHistory, setViewHistory] = useState<View[]>([]);
-    const [user, setUser] = useState<User | null>(null);
+    const [user, setUserRaw] = useState<User | null>(null);
+    // Wrapper: always applies reviewer overrides before storing user state
+    const setUser = (u: User | null | ((prev: User | null) => User | null)) => {
+        if (typeof u === 'function') {
+            setUserRaw(prev => { const next = u(prev); return next ? applyReviewOverrides(next) : null; });
+        } else {
+            setUserRaw(u ? applyReviewOverrides(u) : null);
+        }
+    };
     const [allUsers, setAllUsers] = useState<User[]>([]);
     const [allCleaners, setAllCleaners] = useState<Cleaner[]>([]);
     const [allJobs, setAllJobs] = useState<Job[]>([]);
@@ -460,13 +468,12 @@ const App: React.FC = () => {
     };
 
     const handleAuthSuccess = async (userData: User, shouldNavigate = true, skipRefetch = false) => {
-        const resolvedUser = applyReviewOverrides(userData);
-        setUser(resolvedUser);
+        setUser(userData); // setUser wrapper applies review overrides automatically
 
         // Navigate IMMEDIATELY so the auth modal disappears right away
         if (shouldNavigate) {
             if (cleanerToRememberForBooking) {
-                if (resolvedUser.userType === 'client' || resolvedUser.role === 'client') {
+                if (userData.userType === 'client' || userData.role === 'client') {
                     handleNavigate('clientDashboard');
                     setTimeout(() => {
                         setCleanerToBook(cleanerToRememberForBooking);
@@ -477,9 +484,9 @@ const App: React.FC = () => {
                     setCleanerToRememberForBooking(null);
                     handleNavigate('cleanerDashboard');
                 }
-            } else if (resolvedUser.isAdmin || (resolvedUser as any).role === 'admin' || (resolvedUser as any).adminRole) {
+            } else if (userData.isAdmin || (userData as any).role === 'admin' || (userData as any).adminRole) {
                 handleNavigate('adminDashboard');
-            } else if ((resolvedUser as any).userType === 'worker' || resolvedUser.role === 'cleaner') {
+            } else if ((userData as any).userType === 'worker' || userData.role === 'cleaner') {
                 handleNavigate('cleanerDashboard');
             } else {
                 handleNavigate('clientDashboard');
@@ -488,7 +495,7 @@ const App: React.FC = () => {
 
         // Refetch data in the background AFTER navigation
         if (skipRefetch) {
-            if (resolvedUser.isAdmin) {
+            if (userData.isAdmin) {
                 setIsDataLoading(true);
                 apiService.adminGetAllUsers()
                     .then(users => setAllUsers(users))
@@ -497,7 +504,7 @@ const App: React.FC = () => {
             }
         } else {
             // Fire and forget — don't block navigation
-            refetchAllData(resolvedUser).catch(e => console.error('Background refetch failed:', e));
+            refetchAllData(userData).catch(e => console.error('Background refetch failed:', e));
         }
     };
 
