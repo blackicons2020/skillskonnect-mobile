@@ -252,7 +252,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onNavi
         }
 
         // Validate required fields for workers
-        if (user.role === 'cleaner') {
+        const workerUserTypes = ['worker', 'Worker (Individual)', 'Worker (Registered Company)'];
+        if (user.role === 'cleaner' || workerUserTypes.includes(user.userType)) {
             if (!formData.experience || Number(formData.experience) < 1) {
                 alert('Please enter your years of experience (at least 1 year).');
                 return;
@@ -606,7 +607,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onNavi
                                 <h3 className="text-lg font-medium text-gray-900 mt-4">Account Information</h3>
                             </div>
                             <div className="px-4 sm:px-6">
-                                {formData.role === 'cleaner' ? (
+                                {(formData.role === 'cleaner' || formData.userType === 'Worker (Individual)' || formData.userType === 'Worker (Registered Company)') ? (
                                     <ProfileField
                                         label="Account Type"
                                         value={formData.cleanerType === 'Company' ? 'Professional (Registered Company)' : 'Professional (Individual)'}
@@ -694,27 +695,28 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onNavi
                             )}
 
                             {/* Professional Details - Only for Cleaners */}
-                            {formData.role === 'cleaner' && (
+                            {(formData.role === 'cleaner' || formData.userType === 'Worker (Individual)' || formData.userType === 'Worker (Registered Company)') && (
                                 <>
                                     <div className="px-4 sm:px-6">
                                         <h3 className="text-lg font-medium text-gray-900 mt-6">Professional Details</h3>
 
-                                        <ProfileField label="Skills Type" value={formData.services} isEditing={isEditing}>
+                                        <ProfileField label="Skills Type" value={(formData.services && formData.services.length > 0) ? formData.services : (formData.skillType || [])} isEditing={isEditing}>
                                             {isEditing ? (
                                                 <div className="w-full">
                                                     <SearchableSkillSelector
-                                                        selectedSkills={Array.isArray(formData.services) ? formData.services : []}
-                                                        onChange={(newSkills) => setFormData((prev: any) => ({ ...prev, services: newSkills }))}
+                                                        selectedSkills={Array.isArray(formData.services) && formData.services.length > 0 ? formData.services : (Array.isArray(formData.skillType) ? formData.skillType : [])}
+                                                        onChange={(newSkills) => setFormData((prev: any) => ({ ...prev, services: newSkills, skillType: newSkills }))}
                                                         maxSkills={3}
                                                     />
                                                 </div>
                                             ) : (
                                                 <div className="flex flex-wrap gap-2">
-                                                    {formData.services && formData.services.length > 0 ? formData.services.map((s: string) => (
-                                                        <span key={s} className="inline-flex items-center bg-green-100 text-primary text-xs font-semibold px-2.5 py-1 rounded-full">
-                                                            {s}
-                                                        </span>
-                                                    )) : <span className="text-sm text-gray-500">No skills selected</span>}
+                                                    {((formData.services && formData.services.length > 0) ? formData.services : (formData.skillType || [])).length > 0
+                                                        ? ((formData.services && formData.services.length > 0) ? formData.services : (formData.skillType || [])).map((s: string) => (
+                                                            <span key={s} className="inline-flex items-center bg-green-100 text-primary text-xs font-semibold px-2.5 py-1 rounded-full">
+                                                                {s}
+                                                            </span>
+                                                        )) : <span className="text-sm text-gray-500">No skills selected</span>}
                                                 </div>
                                             )}
                                         </ProfileField>
