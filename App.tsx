@@ -224,6 +224,20 @@ const App: React.FC = () => {
                 return;
             }
 
+            // Detect direct /help URL
+            if (window.location.pathname === '/help') {
+                setView('help');
+                setIsLoading(false);
+                return;
+            }
+
+            // Detect direct /contact URL
+            if (window.location.pathname === '/contact') {
+                setView('contact');
+                setIsLoading(false);
+                return;
+            }
+
             // Detect password-reset link: ?action=resetPassword&token=<raw>
             const urlParams = new URLSearchParams(window.location.search);
             const action = urlParams.get('action');
@@ -399,7 +413,11 @@ const App: React.FC = () => {
         // Sync URL for the Privacy Policy page
         if (targetView === 'privacy') {
             window.history.pushState({}, document.title, '/privacy');
-        } else if (view === 'privacy') {
+        } else if (targetView === 'help') {
+            window.history.pushState({}, document.title, '/help');
+        } else if (targetView === 'contact') {
+            window.history.pushState({}, document.title, '/contact');
+        } else if (view === 'privacy' || view === 'help' || view === 'contact') {
             window.history.replaceState({}, document.title, '/');
         }
         // Reset dashboard tab to default when navigating normally
@@ -413,7 +431,7 @@ const App: React.FC = () => {
         setViewHistory(prev => prev.slice(0, -1));
         setView(previousView);
         // Restore base URL when leaving the Privacy page
-        if (view === 'privacy') {
+        if (view === 'privacy' || view === 'help' || view === 'contact') {
             window.history.replaceState({}, document.title, '/');
         }
         window.scrollTo(0, 0);
