@@ -31,6 +31,7 @@ const HelpCenterPage = React.lazy(() => import('./components/HelpCenterPage').th
 const ContactPage = React.lazy(() => import('./components/ContactPage').then(module => ({ default: module.ContactPage })));
 const TermsPage = React.lazy(() => import('./components/TermsPage').then(module => ({ default: module.TermsPage })));
 const PrivacyPage = React.lazy(() => import('./components/PrivacyPage').then(module => ({ default: module.PrivacyPage })));
+const DeleteAccountPage = React.lazy(() => import('./components/DeleteAccountPage').then(module => ({ default: module.DeleteAccountPage })));
 const SearchResultsPage = React.lazy(() => import('./components/SearchResultsPage').then(module => ({ default: module.SearchResultsPage })));
 
 
@@ -934,6 +935,7 @@ const App: React.FC = () => {
             case 'contact': return withBack('Back', <ContactPage />);
             case 'terms': return withBack('Back', <TermsPage />);
             case 'privacy': return withBack('Back', <PrivacyPage />);
+            case 'deleteAccount': return withBack('Back', <DeleteAccountPage />);
             case 'landing':
             default:
                 return <LandingPage
